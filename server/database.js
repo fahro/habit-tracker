@@ -141,7 +141,14 @@ export function getDailyStats(userId, numDays = 30) {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - numDays);
   
-  const startDateStr = startDate.toISOString().split('T')[0];
+  // Don't go before user creation date
+  let userCreatedDate = user.created_at ? new Date(user.created_at) : startDate;
+  // Set to start of day (midnight) to include the full creation day
+  userCreatedDate.setHours(0, 0, 0, 0);
+  
+  const effectiveStartDate = startDate > userCreatedDate ? startDate : userCreatedDate;
+  
+  const startDateStr = effectiveStartDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];
   
   // Get daily totals
@@ -160,7 +167,7 @@ export function getDailyStats(userId, numDays = 30) {
   const stats = [];
   const dateMap = new Map(dailyTotals.map(d => [d.date, d]));
   
-  for (let d = new Date(endDate); d >= startDate; d.setDate(d.getDate() - 1)) {
+  for (let d = new Date(endDate); d >= effectiveStartDate; d.setDate(d.getDate() - 1)) {
     const dateStr = d.toISOString().split('T')[0];
     const data = dateMap.get(dateStr);
     
