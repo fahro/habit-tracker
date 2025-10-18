@@ -193,20 +193,30 @@ export default function Dashboard({ stats, dailyStats, user }) {
     metGoal: day.metGoal
   })).reverse() // Reverse to show chronologically (oldest to newest)
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'primary' }) => (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-          <p className={`text-3xl font-bold text-${color}`}>{value}</p>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
-        </div>
-        <div className={`p-3 rounded-lg bg-${color}/10`}>
-          <Icon className={`w-6 h-6 text-${color}`} />
+  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'primary' }) => {
+    const colorClasses = {
+      'orange-500': 'from-orange-500 to-orange-600',
+      'primary': 'from-purple-500 to-blue-600',
+      'success': 'from-green-500 to-emerald-600',
+      'destructive': 'from-red-500 to-pink-600'
+    }
+    const gradient = colorClasses[color] || colorClasses['primary']
+    
+    return (
+      <div className="glass-card rounded-2xl p-6 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-600 mb-2">{title}</p>
+            <p className={`text-4xl font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>{value}</p>
+            {subtitle && <p className="text-sm text-gray-500 mt-2 font-medium">{subtitle}</p>}
+          </div>
+          <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} shadow-lg`}>
+            <Icon className="w-6 h-6 text-white" />
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   // Custom tick component for colored day numbers
   const CustomXAxisTick = ({ x, y, payload }) => {
@@ -263,10 +273,14 @@ export default function Dashboard({ stats, dailyStats, user }) {
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-border">
-        <h2 className="text-xl font-bold mb-4 flex items-center">
-          <TrendingUp className="w-5 h-5 mr-2" />
-          Aktivnost ({monthNames[selectedMonth]} {selectedYear})
+      <div className="glass-card rounded-2xl p-6 shadow-lg">
+        <h2 className="text-xl font-bold mb-6 flex items-center">
+          <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+            <TrendingUp className="w-5 h-5 text-white" />
+          </div>
+          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Aktivnost ({monthNames[selectedMonth]} {selectedYear})
+          </span>
         </h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
@@ -327,21 +341,25 @@ export default function Dashboard({ stats, dailyStats, user }) {
       </div>
 
       {/* Daily Breakdown */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-border">
+      <div className="glass-card rounded-2xl p-6 shadow-lg">
         {/* Month Selector */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            Mjesečni Pregled
+            <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+              <Calendar className="w-5 h-5 text-white" />
+            </div>
+            <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Mjesečni Pregled
+            </span>
           </h2>
           
           <div className="flex items-center gap-4">
             <button
               onClick={goToPreviousMonth}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              className="p-2 hover:bg-white/50 rounded-xl transition-all transform hover:scale-110 backdrop-blur-sm"
               title="Prethodni mjesec"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
             </button>
             
             <div className="text-center min-w-[180px]">
@@ -356,10 +374,10 @@ export default function Dashboard({ stats, dailyStats, user }) {
             <button
               onClick={goToNextMonth}
               disabled={selectedYear === new Date().getFullYear() && selectedMonth === new Date().getMonth()}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 hover:bg-white/50 rounded-xl transition-all transform hover:scale-110 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title="Sljedeći mjesec"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5 text-gray-700" />
             </button>
           </div>
         </div>
@@ -381,9 +399,9 @@ export default function Dashboard({ stats, dailyStats, user }) {
               <div
                 key={day.date}
                 onClick={() => day.sessionCount > 0 && fetchDaySessions(day.date)}
-                className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                  isToday ? 'bg-primary/5 border-primary' : 'bg-background border-border hover:bg-secondary'
-                } ${day.sessionCount > 0 ? 'cursor-pointer' : ''}`}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all transform ${
+                  isToday ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 shadow-glow-sm' : 'bg-white/50 border-white/30 hover:bg-white/80 hover:shadow-md'
+                } ${day.sessionCount > 0 ? 'cursor-pointer hover:scale-102' : ''}`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${
@@ -437,8 +455,8 @@ export default function Dashboard({ stats, dailyStats, user }) {
 
       {/* Day Details Modal */}
       {selectedDate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDayDetails}>
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeDayDetails}>
+          <div className="glass-card rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white">
               <div>
                 <h3 className="text-xl font-bold flex items-center gap-2">

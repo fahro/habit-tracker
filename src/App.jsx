@@ -104,26 +104,28 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Učitavanje...</p>
+        <div className="text-center glass-card p-8 rounded-2xl">
+          <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-purple-600" />
+          <p className="text-gray-700 font-medium">Učitavanje...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-10 shadow-sm">
+      <header className="glass-card border-b border-white/20 sticky top-0 z-10 shadow-lg backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <BookOpen className="w-8 h-8 text-primary" />
+              <div className="p-2 bg-gradient-primary rounded-xl shadow-glow">
+                <BookOpen className="w-8 h-8 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Study Tracker</h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Study Tracker</h1>
                 {selectedUser && (
-                  <p className="text-sm text-muted-foreground">Korisnik: {selectedUser.display_name || selectedUser.name}</p>
+                  <p className="text-sm text-gray-600 font-medium">Korisnik: {selectedUser.display_name || selectedUser.name}</p>
                 )}
               </div>
             </div>
@@ -133,7 +135,7 @@ function App() {
                 <select
                   value={selectedUserId || ''}
                   onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                  className="px-3 py-2 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="px-4 py-2 border border-white/30 rounded-xl bg-white/50 backdrop-blur-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm hover:bg-white/70 transition-all"
                 >
                   {users.map(user => (
                     <option key={user.id} value={user.id}>
@@ -147,10 +149,10 @@ function App() {
           <div className="flex items-center space-x-2 mt-4">
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
                   activeTab === 'dashboard'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-secondary'
+                    ? 'bg-gradient-primary text-white shadow-glow'
+                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
                 }`}
               >
                 <TrendingUp className="w-4 h-4 inline mr-2" />
@@ -158,10 +160,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
                   activeTab === 'add'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-secondary'
+                    ? 'bg-gradient-primary text-white shadow-glow'
+                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
                 }`}
               >
                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -169,10 +171,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
                   activeTab === 'users'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-secondary'
+                    ? 'bg-gradient-primary text-white shadow-glow'
+                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
                 }`}
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -180,10 +182,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
                   activeTab === 'settings'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-secondary'
+                    ? 'bg-gradient-primary text-white shadow-glow'
+                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
                 }`}
               >
                 <Settings className="w-4 h-4 inline mr-2" />
@@ -196,18 +198,18 @@ function App() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!selectedUserId && users.length === 0 && activeTab !== 'users' ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">Nema korisnika. Kreirajte prvog korisnika.</p>
+          <div className="text-center py-12 glass-card rounded-2xl p-8">
+            <p className="text-gray-700 mb-6 font-medium text-lg">Nema korisnika. Kreirajte prvog korisnika.</p>
             <div className="flex justify-center space-x-3">
               <button
                 onClick={() => setActiveTab('users')}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                className="px-6 py-3 bg-gradient-primary text-white rounded-xl hover:shadow-glow transform hover:scale-105 font-medium transition-all"
               >
                 Kreiraj Korisnika
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className="px-4 py-2 border border-border rounded-lg hover:bg-secondary"
+                className="px-6 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl hover:bg-white/70 font-medium transition-all transform hover:scale-105"
               >
                 Dodaj Sesiju
               </button>

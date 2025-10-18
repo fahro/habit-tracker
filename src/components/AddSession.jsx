@@ -121,9 +121,11 @@ export default function AddSession({ userId, onSessionAdded, users }) {
   return (
     <div className="space-y-6">
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          <span className="font-medium">
+        <div className="glass-card border-2 border-green-400 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-lg">
+          <div className="p-2 bg-gradient-success rounded-xl">
+            <CheckCircle className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-semibold text-gray-800">
             {sessionsAdded > 0 
               ? `✅ Uspješno dodano ${sessionsAdded} ${sessionsAdded === 1 ? 'sesija' : sessionsAdded < 5 ? 'sesije' : 'sesija'}!`
               : '✅ Sesija uspješno dodana!'}
@@ -132,16 +134,20 @@ export default function AddSession({ userId, onSessionAdded, users }) {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-          <span className="font-medium">❌ {error}</span>
+        <div className="glass-card border-2 border-red-400 px-6 py-4 rounded-2xl shadow-lg">
+          <span className="font-semibold text-red-700">❌ {error}</span>
         </div>
       )}
 
       {/* Manual Entry */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-border">
-        <h2 className="text-xl font-bold mb-4 flex items-center">
-          <Plus className="w-5 h-5 mr-2" />
-          Dodaj Sesiju Ručno
+      <div className="glass-card rounded-2xl p-6 shadow-lg">
+        <h2 className="text-xl font-bold mb-6 flex items-center">
+          <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+            <Plus className="w-5 h-5 text-white" />
+          </div>
+          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Dodaj Sesiju Ručno
+          </span>
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -211,7 +217,7 @@ export default function AddSession({ userId, onSessionAdded, users }) {
             <select
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
             >
               <option value="today">Danas ({new Date().toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long' })})</option>
               <option value="yesterday">Juče ({new Date(Date.now() - 86400000).toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long' })})</option>
@@ -221,7 +227,7 @@ export default function AddSession({ userId, onSessionAdded, users }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold hover:shadow-glow transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
           >
             {loading ? 'Dodavanje...' : 'Dodaj Sesiju'}
           </button>
@@ -229,10 +235,14 @@ export default function AddSession({ userId, onSessionAdded, users }) {
       </div>
 
       {/* Message Format Entry */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-border">
-        <h2 className="text-xl font-bold mb-4 flex items-center">
-          <BookOpen className="w-5 h-5 mr-2" />
-          Dodaj Više Sesija Odjednom
+      <div className="glass-card rounded-2xl p-6 shadow-lg">
+        <h2 className="text-xl font-bold mb-6 flex items-center">
+          <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+            <BookOpen className="w-5 h-5 text-white" />
+          </div>
+          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Dodaj Više Sesija Odjednom
+          </span>
         </h2>
         <p className="text-sm text-muted-foreground mb-4">
           Zalijepite poruku u formatu sa Vibera/WhatsAppa. Prva linija može biti ime korisnika (opciono).
@@ -247,7 +257,7 @@ export default function AddSession({ userId, onSessionAdded, users }) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Npr: Fahro, Marko..."
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
             />
             <p className="text-xs text-muted-foreground mt-1">
               Ako je prazno, koristi se trenutno izabrani korisnik. Novi korisnik će biti automatski kreiran.
@@ -262,7 +272,7 @@ export default function AddSession({ userId, onSessionAdded, users }) {
               onChange={(e) => setMessage(e.target.value)}
               placeholder={`Fahro:\nGame 1. Steinitz W. - Lipke P. "Play against isolated pawn"\n18m 32s\nGame 1. Schlechter C. - John W. "2 Important Rules"\n22m 11s\n\nIli bez imena:\nGame 1. Test\n25m`}
               rows={8}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+              className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all font-mono text-sm"
               required
             />
             <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -278,7 +288,7 @@ export default function AddSession({ userId, onSessionAdded, users }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold hover:shadow-glow transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
           >
             {loading ? 'Dodavanje...' : 'Dodaj Sesije'}
           </button>
@@ -286,10 +296,14 @@ export default function AddSession({ userId, onSessionAdded, users }) {
       </div>
 
       {/* Webhook Info */}
-      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-        <h2 className="text-xl font-bold mb-4 flex items-center text-blue-900">
-          <Link2 className="w-5 h-5 mr-2" />
-          Webhook URL za Integraciju
+      <div className="glass-card rounded-2xl p-6 shadow-lg border-2 border-blue-300">
+        <h2 className="text-xl font-bold mb-6 flex items-center">
+          <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg mr-3">
+            <Link2 className="w-5 h-5 text-white" />
+          </div>
+          <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+            Webhook URL za Integraciju
+          </span>
         </h2>
         <p className="text-sm text-blue-800 mb-3">
           Koristite ovaj URL za automatsko slanje poruka iz Viber/WhatsApp bota:
