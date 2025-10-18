@@ -22,9 +22,13 @@ function App() {
       // Auto-select first user if none selected
       if (usersData.length > 0 && !selectedUserId) {
         setSelectedUserId(usersData[0].id)
+      } else if (usersData.length === 0) {
+        // No users, stop loading
+        setLoading(false)
       }
     } catch (error) {
       console.error('Error fetching users:', error)
+      setLoading(false)
     }
   }
 
@@ -54,6 +58,13 @@ function App() {
 
   useEffect(() => {
     fetchUsers()
+    
+    // Failsafe: stop loading after 10 seconds
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 10000)
+    
+    return () => clearTimeout(timeout)
   }, [])
   
   useEffect(() => {
