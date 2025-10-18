@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar, X, BookOpen } from 'lucide-react'
+import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar, X, BookOpen, Edit2, Trash2, Save } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 
 export default function Dashboard({ stats, dailyStats, user }) {
@@ -9,14 +9,27 @@ export default function Dashboard({ stats, dailyStats, user }) {
   const [selectedDate, setSelectedDate] = useState(null)
   const [daySessions, setDaySessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(false)
+  const [editingSessionId, setEditingSessionId] = useState(null)
+  const [editFormData, setEditFormData] = useState({ lessonName: '', minutes: 0, seconds: 0 })
+  const [monthlyDailyStats, setMonthlyDailyStats] = useState(null)
   
-  // Fetch monthly goal when month/year changes
+  // Fetch monthly data when month/year changes
   useEffect(() => {
-    fetch(`/api/settings/monthly/${selectedYear}/${selectedMonth}`)
-      .then(res => res.json())
-      .then(data => setMonthlyGoal(data.dailyGoalMinutes))
-      .catch(err => console.error('Error fetching monthly goal:', err))
-  }, [selectedMonth, selectedYear])
+    if (!user) return
+    
+    // Get first and last day of selected month
+    const firstDay = new Date(selectedYear, selectedMonth, 1)
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    
+    Promise.all([
+      fetch(`/api/settings/monthly/${selectedYear}/${selectedMonth + 1}`).then(res => res.json()),
+      fetch(`/api/stats/daily?days=${daysInMonth + 30}&userId=${user.id}`).then(res => res.json())
+    ]).then(([goalData, statsData]) => {
+      setMonthlyGoal(goalData.dailyGoalMinutes)
+      setMonthlyDailyStats(statsData)
+    }).catch(err => console.error('Error fetching monthly data:', err))
+  }, [selectedMonth, selectedYear, user])
   
   // Fetch sessions for selected date
   const fetchDaySessions = async (date) => {
@@ -36,6 +49,86 @@ export default function Dashboard({ stats, dailyStats, user }) {
   const closeDayDetails = () => {
     setSelectedDate(null)
     setDaySessions([])
+    setEditingSessionId(null)
+  }
+  
+  // Check if date is editable (today or yesterday)
+  const isEditableDate = (date) => {
+    const today = new Date().toISOString().split('T')[0]
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    return date === today || date === yesterday
+  }
+  
+  // Start editing session
+  const startEditSession = (session) => {
+    const minutes = Math.floor(session.duration_seconds / 60)
+    const seconds = session.duration_seconds % 60
+    setEditFormData({
+      lessonName: session.lesson_name,
+      minutes,
+      seconds
+    })
+    setEditingSessionId(session.id)
+  }
+  
+  // Save edited session
+  const saveEditSession = async (sessionId) => {
+    const totalSeconds = (parseInt(editFormData.minutes) || 0) * 60 + (parseInt(editFormData.seconds) || 0)
+    
+    if (totalSeconds === 0) {
+      alert('Trajanje mora biti veće od 0')
+      return
+    }
+    
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lessonName: editFormData.lessonName,
+          duration: totalSeconds,
+          date: selectedDate
+        })
+      })
+      
+      if (res.ok) {
+        setEditingSessionId(null)
+        await fetchDaySessions(selectedDate)
+        // Trigger parent refresh
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Greška pri ažuriranju sesije')
+      }
+    } catch (error) {
+      console.error('Error updating session:', error)
+      alert('Greška pri ažuriranju sesije')
+    }
+  }
+  
+  // Delete session
+  const deleteSessionHandler = async (sessionId) => {
+    if (!confirm('Da li ste sigurni da želite obrisati ovu sesiju?')) {
+      return
+    }
+    
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE'
+      })
+      
+      if (res.ok) {
+        await fetchDaySessions(selectedDate)
+        // Trigger parent refresh
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Greška pri brisanju sesije')
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error)
+      alert('Greška pri brisanju sesije')
+    }
   }
   
   if (!stats || !dailyStats) return null
@@ -53,8 +146,11 @@ export default function Dashboard({ stats, dailyStats, user }) {
     return `${secs}s`
   }
 
+  // Use monthly stats if available, otherwise fallback to dailyStats
+  const statsToUse = monthlyDailyStats || dailyStats
+  
   // Filter stats by selected month
-  const monthlyStats = dailyStats.stats.filter(day => {
+  const monthlyStats = statsToUse.stats.filter(day => {
     const dayDate = new Date(day.date)
     return dayDate.getMonth() === selectedMonth && dayDate.getFullYear() === selectedYear
   }).reverse()
@@ -384,48 +480,125 @@ export default function Dashboard({ stats, dailyStats, user }) {
                   {daySessions.map((session, index) => {
                     const minutes = Math.floor(session.duration_seconds / 60)
                     const seconds = session.duration_seconds % 60
+                    const isEditing = editingSessionId === session.id
+                    const canEdit = isEditableDate(selectedDate)
                     
                     return (
                       <div
                         key={session.id}
                         className="p-4 rounded-lg border border-border bg-background hover:bg-secondary transition-colors"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded">
-                                #{index + 1}
-                              </span>
-                              <h4 className="font-semibold text-lg">{session.lesson_name}</h4>
+                        {isEditing ? (
+                          /* Edit Mode */
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Naziv lekcije</label>
+                              <input
+                                type="text"
+                                value={editFormData.lessonName}
+                                onChange={(e) => setEditFormData({ ...editFormData, lessonName: e.target.value })}
+                                className="w-full px-3 py-2 border border-border rounded-lg"
+                                placeholder="npr. Lekcija 1"
+                              />
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                <span>
-                                  {minutes > 0 && `${minutes}m `}
-                                  {seconds > 0 && `${seconds}s`}
-                                  {minutes === 0 && seconds === 0 && '0s'}
-                                </span>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Minuti</label>
+                                <input
+                                  type="number"
+                                  value={editFormData.minutes}
+                                  onChange={(e) => setEditFormData({ ...editFormData, minutes: e.target.value })}
+                                  className="w-full px-3 py-2 border border-border rounded-lg"
+                                  min="0"
+                                />
                               </div>
                               <div>
-                                Dodato: {new Date(session.created_at).toLocaleTimeString('sr-Latn', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
+                                <label className="block text-sm font-medium mb-1">Sekundi</label>
+                                <input
+                                  type="number"
+                                  value={editFormData.seconds}
+                                  onChange={(e) => setEditFormData({ ...editFormData, seconds: e.target.value })}
+                                  className="w-full px-3 py-2 border border-border rounded-lg"
+                                  min="0"
+                                  max="59"
+                                />
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-primary">
-                              {minutes}'
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => saveEditSession(session.id)}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                              >
+                                <Save className="w-4 h-4" />
+                                Sačuvaj
+                              </button>
+                              <button
+                                onClick={() => setEditingSessionId(null)}
+                                className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-secondary transition-colors"
+                              >
+                                Odustani
+                              </button>
                             </div>
-                            {seconds > 0 && (
-                              <div className="text-xs text-muted-foreground">
-                                {seconds}s
-                              </div>
-                            )}
                           </div>
-                        </div>
+                        ) : (
+                          /* View Mode */
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded">
+                                  #{index + 1}
+                                </span>
+                                <h4 className="font-semibold text-lg">{session.lesson_name}</h4>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  <span>
+                                    {minutes > 0 && `${minutes}m `}
+                                    {seconds > 0 && `${seconds}s`}
+                                    {minutes === 0 && seconds === 0 && '0s'}
+                                  </span>
+                                </div>
+                                <div>
+                                  Dodato: {new Date(session.created_at).toLocaleTimeString('sr-Latn', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right mr-2">
+                                <div className="text-2xl font-bold text-primary">
+                                  {minutes}'
+                                </div>
+                                {seconds > 0 && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {seconds}s
+                                  </div>
+                                )}
+                              </div>
+                              {canEdit && (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => startEditSession(session)}
+                                    className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
+                                    title="Edituj sesiju"
+                                  >
+                                    <Edit2 className="w-4 h-4 text-primary" />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteSessionHandler(session.id)}
+                                    className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                                    title="Obriši sesiju"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}

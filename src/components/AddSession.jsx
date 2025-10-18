@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Clock, BookOpen, CheckCircle, Link2 } from 'lucide-react'
+import { Plus, Clock, BookOpen, CheckCircle, Link2, Calendar } from 'lucide-react'
 
 export default function AddSession({ userId, onSessionAdded, users }) {
   const [lessonName, setLessonName] = useState('')
@@ -8,6 +8,7 @@ export default function AddSession({ userId, onSessionAdded, users }) {
   const [seconds, setSeconds] = useState(0)
   const [message, setMessage] = useState('')
   const [username, setUsername] = useState('')
+  const [selectedDate, setSelectedDate] = useState('today')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -26,6 +27,11 @@ export default function AddSession({ userId, onSessionAdded, users }) {
       return
     }
 
+    // Calculate the date based on selection
+    const date = selectedDate === 'today' 
+      ? new Date().toISOString().split('T')[0]
+      : new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
     try {
       const response = await fetch('/api/sessions', {
         method: 'POST',
@@ -35,7 +41,8 @@ export default function AddSession({ userId, onSessionAdded, users }) {
         body: JSON.stringify({
           lessonName,
           duration: totalSeconds,
-          userId: userId
+          userId: userId,
+          date: date
         })
       })
 
@@ -194,6 +201,21 @@ export default function AddSession({ userId, onSessionAdded, users }) {
                 <p className="text-xs text-muted-foreground text-center mt-1">Sekundi</p>
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Calendar className="w-4 h-4 inline mr-1" />
+              Datum
+            </label>
+            <select
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="today">Danas ({new Date().toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long' })})</option>
+              <option value="yesterday">Juče ({new Date(Date.now() - 86400000).toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long' })})</option>
+            </select>
           </div>
 
           <button

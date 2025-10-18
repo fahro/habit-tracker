@@ -49,10 +49,11 @@ COPY server ./server
 
 # Create directory for database with proper permissions
 RUN mkdir -p /app/data && \
+    chmod 777 /app/data && \
     chown -R node:node /app
 
-# Use non-root user for security
-USER node
+# Railway volumes need to be mounted by root, so we stay as root
+# USER node
 
 # Railway sets PORT environment variable
 # We ensure the app listens on 0.0.0.0 to be accessible

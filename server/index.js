@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, updateUserDisplayName, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings, updateUserCreatedAt } from './database.js';
+import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, updateUserDisplayName, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings, updateUserCreatedAt, getSessionById, updateSession, deleteSession } from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -320,6 +320,65 @@ app.get('/api/sessions', (req, res) => {
   
   const sessions = getSessions(targetUserId, startDate, endDate);
   res.json(sessions);
+});
+
+// Update a session (only for today and yesterday)
+app.put('/api/sessions/:sessionId', (req, res) => {
+  const sessionId = parseInt(req.params.sessionId);
+  const { lessonName, duration, date } = req.body;
+  
+  // Get existing session
+  const session = getSessionById(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Sesija nije pronađena' });
+  }
+  
+  // Check if session is from today or yesterday
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  
+  const sessionDate = date || session.date;
+  if (sessionDate !== today && sessionDate !== yesterday) {
+    return res.status(403).json({ 
+      error: 'Možete editovati samo sesije za današnji i jučerašnji dan' 
+    });
+  }
+  
+  // Update session
+  updateSession(
+    sessionId, 
+    lessonName || session.lesson_name, 
+    duration !== undefined ? duration : session.duration_seconds,
+    sessionDate
+  );
+  
+  res.json({ success: true, message: 'Sesija uspješno ažurirana' });
+});
+
+// Delete a session (only for today and yesterday)
+app.delete('/api/sessions/:sessionId', (req, res) => {
+  const sessionId = parseInt(req.params.sessionId);
+  
+  // Get existing session
+  const session = getSessionById(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Sesija nije pronađena' });
+  }
+  
+  // Check if session is from today or yesterday
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  
+  if (session.date !== today && session.date !== yesterday) {
+    return res.status(403).json({ 
+      error: 'Možete brisati samo sesije za današnji i jučerašnji dan' 
+    });
+  }
+  
+  // Delete session
+  deleteSession(sessionId);
+  
+  res.json({ success: true, message: 'Sesija uspješno obrisana' });
 });
 
 // Get daily statistics for a user

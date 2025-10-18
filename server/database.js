@@ -11,15 +11,39 @@ const dataDir = process.env.NODE_ENV === 'production'
   ? path.join(__dirname, '../data')
   : __dirname;
 
-// Create data directory if it doesn't exist
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Create data directory if it doesn't exist with proper error handling
+try {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true, mode: 0o755 });
+    console.log(`📁 Created data directory: ${dataDir}`);
+  }
+  
+  // Verify directory is writable
+  fs.accessSync(dataDir, fs.constants.W_OK);
+  console.log(`✅ Data directory is writable: ${dataDir}`);
+} catch (error) {
+  console.error(`❌ Error with data directory:`, error);
+  console.log(`Falling back to /tmp/data`);
+  const tmpDir = '/tmp/data';
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true, mode: 0o755 });
+  }
 }
 
 const dbPath = path.join(dataDir, 'study-tracker.db');
 console.log(`📁 Database location: ${dbPath}`);
 
-const db = new Database(dbPath);
+let db;
+try {
+  db = new Database(dbPath);
+  console.log(`✅ Database opened successfully`);
+} catch (error) {
+  console.error(`❌ Failed to open database at ${dbPath}:`, error);
+  // Fallback to temp directory
+  const fallbackPath = '/tmp/data/study-tracker.db';
+  console.log(`Trying fallback location: ${fallbackPath}`);
+  db = new Database(fallbackPath);
+}
 
 export function initDatabase() {
   // Create users table
@@ -153,6 +177,22 @@ export function getSessions(userId, startDate, endDate) {
   query += ' ORDER BY date DESC, created_at DESC';
   
   return db.prepare(query).all(...params);
+}
+
+export function getSessionById(sessionId) {
+  return db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+}
+
+export function updateSession(sessionId, lessonName, durationSeconds, date) {
+  db.prepare(`
+    UPDATE sessions 
+    SET lesson_name = ?, duration_seconds = ?, date = ?
+    WHERE id = ?
+  `).run(lessonName, durationSeconds, date, sessionId);
+}
+
+export function deleteSession(sessionId) {
+  db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
 }
 
 export function getDailyStats(userId, numDays = 30) {
