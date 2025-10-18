@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar, X, BookOpen } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 
 export default function Dashboard({ stats, dailyStats, user }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [monthlyGoal, setMonthlyGoal] = useState(30)
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [daySessions, setDaySessions] = useState([])
+  const [loadingSessions, setLoadingSessions] = useState(false)
   
   // Fetch monthly goal when month/year changes
   useEffect(() => {
@@ -14,6 +17,26 @@ export default function Dashboard({ stats, dailyStats, user }) {
       .then(data => setMonthlyGoal(data.dailyGoalMinutes))
       .catch(err => console.error('Error fetching monthly goal:', err))
   }, [selectedMonth, selectedYear])
+  
+  // Fetch sessions for selected date
+  const fetchDaySessions = async (date) => {
+    setSelectedDate(date)
+    setLoadingSessions(true)
+    try {
+      const res = await fetch(`/api/sessions?userId=${user.id}&startDate=${date}&endDate=${date}`)
+      const sessions = await res.json()
+      setDaySessions(sessions)
+    } catch (error) {
+      console.error('Error fetching sessions:', error)
+      setDaySessions([])
+    }
+    setLoadingSessions(false)
+  }
+  
+  const closeDayDetails = () => {
+    setSelectedDate(null)
+    setDaySessions([])
+  }
   
   if (!stats || !dailyStats) return null
 
@@ -261,9 +284,10 @@ export default function Dashboard({ stats, dailyStats, user }) {
             return (
               <div
                 key={day.date}
+                onClick={() => day.sessionCount > 0 && fetchDaySessions(day.date)}
                 className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
                   isToday ? 'bg-primary/5 border-primary' : 'bg-background border-border hover:bg-secondary'
-                }`}
+                } ${day.sessionCount > 0 ? 'cursor-pointer' : ''}`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${
@@ -314,6 +338,121 @@ export default function Dashboard({ stats, dailyStats, user }) {
           )}
         </div>
       </div>
+
+      {/* Day Details Modal */}
+      {selectedDate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDayDetails}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Calendar className="w-6 h-6 text-primary" />
+                  Detalji za {new Date(selectedDate).toLocaleDateString('sr-Latn', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </h3>
+                {!loadingSessions && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {daySessions.length} {daySessions.length === 1 ? 'sesija' : 'sesija'}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={closeDayDetails}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+              {loadingSessions ? (
+                <div className="text-center py-12">
+                  <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
+                  <p className="text-muted-foreground">Učitavanje...</p>
+                </div>
+              ) : daySessions.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">Nema sesija za ovaj dan</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {daySessions.map((session, index) => {
+                    const minutes = Math.floor(session.duration_seconds / 60)
+                    const seconds = session.duration_seconds % 60
+                    
+                    return (
+                      <div
+                        key={session.id}
+                        className="p-4 rounded-lg border border-border bg-background hover:bg-secondary transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded">
+                                #{index + 1}
+                              </span>
+                              <h4 className="font-semibold text-lg">{session.lesson_name}</h4>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>
+                                  {minutes > 0 && `${minutes}m `}
+                                  {seconds > 0 && `${seconds}s`}
+                                  {minutes === 0 && seconds === 0 && '0s'}
+                                </span>
+                              </div>
+                              <div>
+                                Dodato: {new Date(session.created_at).toLocaleTimeString('sr-Latn', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">
+                              {minutes}'
+                            </div>
+                            {seconds > 0 && (
+                              <div className="text-xs text-muted-foreground">
+                                {seconds}s
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  
+                  {/* Total Summary */}
+                  <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Ukupno vrijeme</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {formatTime(daySessions.reduce((sum, s) => sum + s.duration_seconds, 0))}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Ukupno sesija</p>
+                        <p className="text-2xl font-bold">
+                          {daySessions.length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
