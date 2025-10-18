@@ -24,18 +24,21 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine
 
-# Install runtime dependencies
+# Install runtime dependencies AND build tools for better-sqlite3
 RUN apk add --no-cache \
     sqlite \
-    dumb-init
+    dumb-init \
+    python3 \
+    make \
+    g++
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --production --ignore-scripts && \
+# Install production dependencies (better-sqlite3 needs to compile)
+RUN npm install --production && \
     npm cache clean --force
 
 # Copy built frontend from builder
