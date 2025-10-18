@@ -233,12 +233,37 @@ export default function AddSession({ userId, onSessionAdded, users }) {
         <p className="text-sm text-blue-800 mb-3">
           Koristite ovaj URL za automatsko slanje poruka iz Viber/WhatsApp bota:
         </p>
-        <div className="bg-white rounded-lg p-3 border border-blue-300 font-mono text-sm break-all">
+        <div className="bg-white rounded-lg p-3 border border-blue-300 font-mono text-sm break-all mb-4">
           {webhookUrl}
         </div>
-        <p className="text-xs text-blue-700 mt-3">
-          POST zahtjev sa JSON body: <code className="bg-white px-2 py-1 rounded">{'{ "message": "vaša poruka" }'}</code>
-        </p>
+        
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-semibold text-blue-900 mb-2">Format 1: Author + Content (Preporučeno)</p>
+            <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
+              {'{\n  "author": "Ime",\n  "content": "Game 1\\n30m"\n}'}
+            </code>
+            <p className="text-xs text-blue-600 mt-1">
+              ✅ <strong>author</strong> je obavezan | Korisnik se automatski kreira ako ne postoji
+            </p>
+          </div>
+          
+          <div>
+            <p className="text-xs font-semibold text-blue-900 mb-2">Format 2: Message (Backward Compatible)</p>
+            <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
+              {'{\n  "message": "Ime:\\nGame 1\\n30m"\n}'}
+            </code>
+            <p className="text-xs text-blue-600 mt-1">
+              Format: <code className="bg-white px-1">Ime:</code> na prvoj liniji, zatim lekcije i trajanja
+            </p>
+          </div>
+        </div>
+        
+        <div className="mt-4 pt-4 border-t border-blue-200">
+          <p className="text-xs text-blue-700">
+            <strong>Primjer trajanja:</strong> 30m, 1h 30m, 45m 30s, 2h
+          </p>
+        </div>
       </div>
     </div>
   )
