@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings, updateUserCreatedAt } from './database.js';
+import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, updateUserDisplayName, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings, updateUserCreatedAt } from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -163,20 +163,30 @@ app.post('/api/users', (req, res) => {
 // Update user settings
 app.put('/api/users/:userId', (req, res) => {
   const userId = parseInt(req.params.userId);
-  const { dailyGoalMinutes } = req.body;
+  const { displayName } = req.body;
   
   const user = getUserById(userId);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
   
-  updateUserSettings(userId, dailyGoalMinutes);
+  if (displayName !== undefined) {
+    updateUserDisplayName(userId, displayName);
+  }
+  
   res.json({ success: true });
 });
 
 // Delete user
 app.delete('/api/users/:userId', (req, res) => {
   const userId = parseInt(req.params.userId);
+  const { password } = req.body;
+  
+  // Verify password
+  const ADMIN_PASSWORD = 'nikadporazsamolekcija';
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Pogrešna šifra' });
+  }
   
   const user = getUserById(userId);
   if (!user) {

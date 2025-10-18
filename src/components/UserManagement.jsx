@@ -12,6 +12,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
 
   const resetForm = () => {
     setFormData({
@@ -71,7 +72,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          dailyGoalMinutes: parseInt(formData.dailyGoalMinutes)
+          displayName: formData.displayName.trim()
         })
       })
 
@@ -96,8 +97,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
     setEditingUser(user.id)
     setFormData({
       name: user.name,
-      displayName: user.display_name || user.name,
-      dailyGoalMinutes: user.daily_goal_minutes
+      displayName: user.display_name || user.name
     })
     setShowAddForm(false)
   }
@@ -108,7 +108,13 @@ export default function UserManagement({ users, onUsersUpdated }) {
 
     try {
       const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          password: deletePassword
+        })
       })
 
       const data = await response.json()
@@ -116,20 +122,25 @@ export default function UserManagement({ users, onUsersUpdated }) {
       if (response.ok) {
         setSuccess(true)
         setDeletingUser(null)
+        setDeletePassword('')
         onUsersUpdated()
         
         setTimeout(() => setSuccess(false), 3000)
       } else {
         setError(data.error || 'Greška pri brisanju korisnika')
-        setDeletingUser(null)
       }
     } catch (error) {
       console.error('Error deleting user:', error)
       setError('Greška pri brisanju korisnika')
-      setDeletingUser(null)
     } finally {
       setLoading(false)
     }
+  }
+
+  const cancelDelete = () => {
+    setDeletingUser(null)
+    setDeletePassword('')
+    setError('')
   }
 
   return (
@@ -184,9 +195,26 @@ export default function UserManagement({ users, onUsersUpdated }) {
               <p className="text-sm mb-2">
                 Da li ste sigurni da želite obrisati korisnika <strong>{deletingUser.display_name || deletingUser.name}</strong>?
               </p>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3 mb-4">
                 <p className="text-sm text-yellow-800">
                   ⚠️ <strong>Upozorenje:</strong> Sve sesije ovog korisnika će biti trajno obrisane.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Šifra za potvrdu *
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Unesite šifru"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  disabled={loading}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Za sigurnost, potrebna je šifra za brisanje korisnika
                 </p>
               </div>
             </div>
@@ -194,7 +222,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
             <div className="flex space-x-3">
               <button
                 onClick={() => handleDeleteUser(deletingUser.id)}
-                disabled={loading}
+                disabled={loading || !deletePassword}
                 className="flex-1 bg-red-600 text-white py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -202,7 +230,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
               </button>
               
               <button
-                onClick={() => setDeletingUser(null)}
+                onClick={cancelDelete}
                 disabled={loading}
                 className="px-6 py-2 border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-50"
               >
@@ -308,15 +336,14 @@ export default function UserManagement({ users, onUsersUpdated }) {
                   {editingUser === user.id && (
                     <div className="mt-3 pl-13">
                       <label className="block text-sm font-medium mb-2">
-                        Novi Dnevni Cilj (minute)
+                        Prikazno Ime
                       </label>
                       <div className="flex space-x-2">
                         <input
-                          type="number"
-                          value={formData.dailyGoalMinutes}
-                          onChange={(e) => setFormData({ ...formData, dailyGoalMinutes: e.target.value })}
-                          min="1"
-                          max="1440"
+                          type="text"
+                          value={formData.displayName}
+                          onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                          placeholder="Npr: Fahro Mehmedović"
                           className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <button
@@ -342,7 +369,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
                     <button
                       onClick={() => startEdit(user)}
                       className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                      title="Uredi postavke"
+                      title="Uredi prikazno ime"
                     >
                       <Edit2 className="w-4 h-4 text-muted-foreground" />
                     </button>
@@ -369,7 +396,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
           <li>• Novi korisnici se mogu kreirati i automatski pri dodavanju sesija</li>
           <li>• Svaki korisnik ima svoje statistike, nizove i kaznene bodove</li>
           <li>• Dnevni cilj za sve korisnike se postavlja u Postavkama na mjesečnom nivou</li>
-          <li>• Možete urediti dnevni cilj za svakog korisnika individualno</li>
+          <li>• Možete urediti prikazno ime za svakog korisnika</li>
           <li>• ⚠️ Brisanje korisnika će trajno obrisati sve njegove sesije</li>
         </ul>
       </div>

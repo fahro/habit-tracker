@@ -100,6 +100,10 @@ export function updateUserSettings(userId, dailyGoalMinutes) {
   db.prepare('UPDATE users SET daily_goal_minutes = ? WHERE id = ?').run(dailyGoalMinutes, userId);
 }
 
+export function updateUserDisplayName(userId, displayName) {
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, userId);
+}
+
 export function deleteUser(userId) {
   // Delete all sessions for this user first
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
