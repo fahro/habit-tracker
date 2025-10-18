@@ -19,9 +19,18 @@ function App() {
       const usersData = await res.json()
       setUsers(usersData)
       
-      // Auto-select first user if none selected
       if (usersData.length > 0 && !selectedUserId) {
-        setSelectedUserId(usersData[0].id)
+        // Try to restore from localStorage
+        const savedUserId = localStorage.getItem('selectedUserId')
+        const savedUserExists = savedUserId && usersData.find(u => u.id === parseInt(savedUserId))
+        
+        if (savedUserExists) {
+          setSelectedUserId(parseInt(savedUserId))
+        } else {
+          // Auto-select first user if no saved user
+          setSelectedUserId(usersData[0].id)
+          localStorage.setItem('selectedUserId', usersData[0].id.toString())
+        }
       } else if (usersData.length === 0) {
         // No users, stop loading
         setLoading(false)
@@ -69,6 +78,8 @@ function App() {
   
   useEffect(() => {
     if (selectedUserId) {
+      // Save to localStorage whenever user changes
+      localStorage.setItem('selectedUserId', selectedUserId.toString())
       fetchData()
     }
   }, [selectedUserId])
@@ -104,8 +115,8 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center glass-card p-8 rounded-2xl">
-          <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-purple-600" />
+        <div className="text-center bg-white p-8 rounded-lg shadow-card">
+          <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-gray-700 font-medium">Učitavanje...</p>
         </div>
       </div>
@@ -115,44 +126,47 @@ function App() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="glass-card border-b border-white/20 sticky top-0 z-10 shadow-lg backdrop-blur-xl">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-2 bg-gradient-primary rounded-xl shadow-glow">
+              <div className="p-2 bg-primary rounded-lg">
                 <BookOpen className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Study Tracker</h1>
-                {selectedUser && (
-                  <p className="text-sm text-gray-600 font-medium">Korisnik: {selectedUser.display_name || selectedUser.name}</p>
-                )}
+                <h1 className="text-2xl font-bold text-gray-900">Study Tracker</h1>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              {/* User Selector */}
+            <div className="flex items-center space-x-3">
+              {/* User Selector - Highlighted */}
               {users.length > 0 && (
-                <select
-                  value={selectedUserId || ''}
-                  onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                  className="px-4 py-2 border border-white/30 rounded-xl bg-white/50 backdrop-blur-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm hover:bg-white/70 transition-all"
-                >
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.display_name || user.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 py-2 flex items-center space-x-3 shadow-sm">
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">Aktivni korisnik:</span>
+                  </div>
+                  <select
+                    value={selectedUserId || ''}
+                    onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
+                    className="bg-white border border-blue-300 rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all cursor-pointer"
+                  >
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.display_name || user.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
           <div className="flex items-center space-x-2 mt-4">
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   activeTab === 'dashboard'
-                    ? 'bg-gradient-primary text-white shadow-glow'
-                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <TrendingUp className="w-4 h-4 inline mr-2" />
@@ -160,10 +174,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   activeTab === 'add'
-                    ? 'bg-gradient-primary text-white shadow-glow'
-                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -171,10 +185,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   activeTab === 'users'
-                    ? 'bg-gradient-primary text-white shadow-glow'
-                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -182,10 +196,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 rounded-xl font-medium transition-all transform hover:scale-105 ${
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   activeTab === 'settings'
-                    ? 'bg-gradient-primary text-white shadow-glow'
-                    : 'text-gray-600 hover:bg-white/50 backdrop-blur-sm'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Settings className="w-4 h-4 inline mr-2" />
@@ -198,18 +212,18 @@ function App() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!selectedUserId && users.length === 0 && activeTab !== 'users' ? (
-          <div className="text-center py-12 glass-card rounded-2xl p-8">
+          <div className="text-center py-12 bg-white rounded-lg shadow-card p-8">
             <p className="text-gray-700 mb-6 font-medium text-lg">Nema korisnika. Kreirajte prvog korisnika.</p>
             <div className="flex justify-center space-x-3">
               <button
                 onClick={() => setActiveTab('users')}
-                className="px-6 py-3 bg-gradient-primary text-white rounded-xl hover:shadow-glow transform hover:scale-105 font-medium transition-all"
+                className="px-6 py-3 bg-primary text-white rounded-lg hover:shadow-card-hover font-medium transition-all"
               >
                 Kreiraj Korisnika
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className="px-6 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl hover:bg-white/70 font-medium transition-all transform hover:scale-105"
+                className="px-6 py-3 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 font-medium transition-all"
               >
                 Dodaj Sesiju
               </button>
