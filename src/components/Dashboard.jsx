@@ -1,7 +1,11 @@
-import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function Dashboard({ stats, dailyStats, user }) {
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  
   if (!stats || !dailyStats) return null
 
   const formatTime = (seconds) => {
@@ -17,8 +21,45 @@ export default function Dashboard({ stats, dailyStats, user }) {
     return `${secs}s`
   }
 
-  // Prepare chart data (last 14 days)
-  const chartData = dailyStats.stats.slice(0, 14).reverse().map(day => ({
+  // Filter stats by selected month
+  const monthlyStats = dailyStats.stats.filter(day => {
+    const dayDate = new Date(day.date)
+    return dayDate.getMonth() === selectedMonth && dayDate.getFullYear() === selectedYear
+  }).reverse()
+
+  // Calculate monthly penalties
+  const monthlyPenalties = monthlyStats.filter(day => day.penalty).length
+
+  // Calculate user's first activity date
+  const userCreatedDate = user?.created_at ? new Date(user.created_at) : new Date()
+
+  // Month navigation
+  const monthNames = ['Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun', 'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar']
+  
+  const goToPreviousMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11)
+      setSelectedYear(selectedYear - 1)
+    } else {
+      setSelectedMonth(selectedMonth - 1)
+    }
+  }
+  
+  const goToNextMonth = () => {
+    const now = new Date()
+    if (selectedYear === now.getFullYear() && selectedMonth === now.getMonth()) {
+      return // Don't go beyond current month
+    }
+    if (selectedMonth === 11) {
+      setSelectedMonth(0)
+      setSelectedYear(selectedYear + 1)
+    } else {
+      setSelectedMonth(selectedMonth + 1)
+    }
+  }
+
+  // Prepare chart data (last 14 days of selected month)
+  const chartData = monthlyStats.slice(0, 14).map(day => ({
     date: new Date(day.date).toLocaleDateString('sr-Latn', { month: 'short', day: 'numeric' }),
     minutes: day.totalMinutes,
     metGoal: day.metGoal
@@ -111,12 +152,52 @@ export default function Dashboard({ stats, dailyStats, user }) {
 
       {/* Daily Breakdown */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-border">
-        <h2 className="text-xl font-bold mb-4 flex items-center">
-          <Award className="w-5 h-5 mr-2" />
-          Detaljan Pregled (Zadnjih 30 Dana)
-        </h2>
+        {/* Month Selector */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold flex items-center">
+            <Calendar className="w-5 h-5 mr-2" />
+            Mjesečni Pregled
+          </h2>
+          
+          <div className="flex items-center gap-4">
+            <button
+              onClick={goToPreviousMonth}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              title="Prethodni mjesec"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center min-w-[180px]">
+              <div className="font-bold text-lg">
+                {monthNames[selectedMonth]} {selectedYear}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {monthlyPenalties > 0 && `⚠️ ${monthlyPenalties} penala ovaj mjesec`}
+              </div>
+            </div>
+            
+            <button
+              onClick={goToNextMonth}
+              disabled={selectedYear === new Date().getFullYear() && selectedMonth === new Date().getMonth()}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Sljedeći mjesec"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {dailyStats.stats.map((day, index) => {
+          {monthlyStats.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Nema aktivnosti za {monthNames[selectedMonth]} {selectedYear}</p>
+              {userCreatedDate > new Date(selectedYear, selectedMonth, 1) && (
+                <p className="text-xs mt-2">Korisnik kreiran: {userCreatedDate.toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              )}
+            </div>
+          ) : (
+            monthlyStats.map((day, index) => {
             const date = new Date(day.date)
             const isToday = day.date === new Date().toISOString().split('T')[0]
             
@@ -172,7 +253,8 @@ export default function Dashboard({ stats, dailyStats, user }) {
                 </div>
               </div>
             )
-          })}
+          })
+          )}
         </div>
       </div>
     </div>
