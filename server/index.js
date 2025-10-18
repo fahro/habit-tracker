@@ -273,12 +273,37 @@ app.get('/api/stats/overall', (req, res) => {
 // Webhook endpoint for Viber/WhatsApp
 app.post('/api/webhook/message', (req, res) => {
   try {
-    // This endpoint can be called from Viber/WhatsApp bots
-    const message = req.body.message || req.body.text || req.body;
-    const messageText = typeof message === 'string' ? message : JSON.stringify(message);
-    
-    const { username, sessions } = parseMessage(messageText);
     const date = new Date().toISOString().split('T')[0];
+    let username;
+    let sessions;
+    
+    // NEW FORMAT: { author: "Name", content: "Game 1\n30m" }
+    if (req.body.author && req.body.content) {
+      username = req.body.author.trim();
+      
+      if (!username) {
+        return res.status(400).json({ 
+          error: 'Author je obavezan parametar' 
+        });
+      }
+      
+      console.log('New format - Author:', username);
+      console.log('New format - Content:', req.body.content);
+      
+      // Parse content (without username prefix)
+      const parsed = parseMessage(req.body.content);
+      console.log('Parsed sessions:', parsed.sessions);
+      sessions = parsed.sessions;
+    }
+    // OLD FORMAT: { message: "Name:\nGame 1\n30m" }
+    else {
+      const message = req.body.message || req.body.text || req.body;
+      const messageText = typeof message === 'string' ? message : JSON.stringify(message);
+      
+      const parsed = parseMessage(messageText);
+      username = parsed.username;
+      sessions = parsed.sessions;
+    }
     
     // Get or create user
     let userId;
@@ -311,7 +336,8 @@ app.post('/api/webhook/message', (req, res) => {
       success: true, 
       message: `✅ ${user.display_name || user.name}: Zabilježeno ${addedSessions.length} lekcija!`,
       sessions: addedSessions,
-      user: user.name
+      user: user.name,
+      count: addedSessions.length
     });
   } catch (error) {
     console.error('Webhook error:', error);
