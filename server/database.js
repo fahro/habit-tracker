@@ -46,6 +46,18 @@ export function initDatabase() {
     )
   `);
 
+  // Create global monthly settings table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS monthly_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      daily_goal_minutes INTEGER NOT NULL DEFAULT 30,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(year, month)
+    )
+  `);
+
   // Create indexes
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON sessions(user_id, date);
@@ -134,7 +146,6 @@ export function getSessions(userId, startDate, endDate) {
 export function getDailyStats(userId, numDays = 30) {
   const user = getUserById(userId);
   if (!user) return { stats: [], totalPenalties: 0 };
-  const dailyGoalSeconds = user.daily_goal_minutes * 60;
   
   // Get date range
   const endDate = new Date();
@@ -170,6 +181,12 @@ export function getDailyStats(userId, numDays = 30) {
   for (let d = new Date(endDate); d >= effectiveStartDate; d.setDate(d.getDate() - 1)) {
     const dateStr = d.toISOString().split('T')[0];
     const data = dateMap.get(dateStr);
+    
+    // Get monthly goal for this specific date
+    const year = d.getFullYear();
+    const month = d.getMonth(); // 0-11
+    const dailyGoalMinutes = getMonthlyGoal(year, month);
+    const dailyGoalSeconds = dailyGoalMinutes * 60;
     
     const totalSeconds = data ? data.total_seconds : 0;
     const totalMinutes = Math.floor(totalSeconds / 60);
@@ -215,7 +232,10 @@ export function getDailyStats(userId, numDays = 30) {
 export function getOverallStats(userId) {
   const user = getUserById(userId);
   if (!user) return { totalSessions: 0, totalSeconds: 0, totalHours: 0, totalMinutes: 0, daysActive: 0, currentStreak: 0, longestStreak: 0, dailyGoalMinutes: 30 };
-  const dailyGoalSeconds = user.daily_goal_minutes * 60;
+  
+  // Get current month's goal for display
+  const now = new Date();
+  const currentMonthGoal = getMonthlyGoal(now.getFullYear(), now.getMonth());
   
   // Total sessions and time
   const totals = db.prepare(`
@@ -249,7 +269,11 @@ export function getOverallStats(userId) {
   for (const day of allDailyStats) {
     const dayDate = checkDate.toISOString().split('T')[0];
     
-    if (day.date === dayDate && day.total_seconds >= dailyGoalSeconds) {
+    // Get goal for this day
+    const dayGoalMinutes = getMonthlyGoal(checkDate.getFullYear(), checkDate.getMonth());
+    const dayGoalSeconds = dayGoalMinutes * 60;
+    
+    if (day.date === dayDate && day.total_seconds >= dayGoalSeconds) {
       if (currentStreak === tempStreak) {
         currentStreak++;
       }
@@ -271,7 +295,12 @@ export function getOverallStats(userId) {
     const date = sortedDates[i];
     const data = dateMap.get(date);
     
-    if (data && data.total_seconds >= dailyGoalSeconds) {
+    // Get goal for this specific date
+    const dateObj = new Date(date);
+    const dateGoalMinutes = getMonthlyGoal(dateObj.getFullYear(), dateObj.getMonth());
+    const dateGoalSeconds = dateGoalMinutes * 60;
+    
+    if (data && data.total_seconds >= dateGoalSeconds) {
       streak++;
       longestStreak = Math.max(longestStreak, streak);
     } else {
@@ -290,8 +319,29 @@ export function getOverallStats(userId) {
     daysActive: totals.days_active || 0,
     currentStreak,
     longestStreak,
-    dailyGoalMinutes: user.daily_goal_minutes
+    dailyGoalMinutes: currentMonthGoal // Return current month's goal
   };
+}
+
+// Monthly Settings functions
+export function getMonthlyGoal(year, month) {
+  const setting = db.prepare('SELECT daily_goal_minutes FROM monthly_settings WHERE year = ? AND month = ?').get(year, month);
+  return setting ? setting.daily_goal_minutes : 30; // Default 30 minutes
+}
+
+export function setMonthlyGoal(year, month, dailyGoalMinutes) {
+  db.prepare(`
+    INSERT INTO monthly_settings (year, month, daily_goal_minutes)
+    VALUES (?, ?, ?)
+    ON CONFLICT(year, month) 
+    DO UPDATE SET daily_goal_minutes = excluded.daily_goal_minutes
+  `).run(year, month, dailyGoalMinutes);
+  
+  return getMonthlyGoal(year, month);
+}
+
+export function getAllMonthlySettings() {
+  return db.prepare('SELECT * FROM monthly_settings ORDER BY year DESC, month DESC').all();
 }
 
 export default db;

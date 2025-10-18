@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, deleteUser } from './database.js';
+import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings } from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -390,6 +390,31 @@ app.post('/api/webhook/message', (req, res) => {
     console.error('Webhook error:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Monthly settings endpoints
+app.get('/api/settings/monthly/:year/:month', (req, res) => {
+  const year = parseInt(req.params.year);
+  const month = parseInt(req.params.month);
+  
+  const dailyGoalMinutes = getMonthlyGoal(year, month);
+  res.json({ year, month, dailyGoalMinutes });
+});
+
+app.post('/api/settings/monthly', (req, res) => {
+  const { year, month, dailyGoalMinutes } = req.body;
+  
+  if (!year || month === undefined || !dailyGoalMinutes) {
+    return res.status(400).json({ error: 'Year, month, and dailyGoalMinutes are required' });
+  }
+  
+  const goal = setMonthlyGoal(year, month, dailyGoalMinutes);
+  res.json({ year, month, dailyGoalMinutes: goal, message: 'Mjesečni cilj uspješno postavljen' });
+});
+
+app.get('/api/settings/monthly', (req, res) => {
+  const settings = getAllMonthlySettings();
+  res.json(settings);
 });
 
 // Health check

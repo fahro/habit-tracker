@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 
 export default function Dashboard({ stats, dailyStats, user }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [monthlyGoal, setMonthlyGoal] = useState(30)
+  
+  // Fetch monthly goal when month/year changes
+  useEffect(() => {
+    fetch(`/api/settings/monthly/${selectedYear}/${selectedMonth}`)
+      .then(res => res.json())
+      .then(data => setMonthlyGoal(data.dailyGoalMinutes))
+      .catch(err => console.error('Error fetching monthly goal:', err))
+  }, [selectedMonth, selectedYear])
   
   if (!stats || !dailyStats) return null
 
@@ -160,6 +169,19 @@ export default function Dashboard({ stats, dailyStats, user }) {
                 borderRadius: '8px'
               }}
               formatter={(value) => [`${value} min`, 'Vrijeme']}
+            />
+            <ReferenceLine 
+              y={monthlyGoal} 
+              stroke="#3b82f6" 
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              label={{ 
+                value: `Cilj: ${monthlyGoal}m`, 
+                position: 'right',
+                fill: '#3b82f6',
+                fontSize: 12,
+                fontWeight: 600
+              }}
             />
             <Bar dataKey="minutes" radius={[8, 8, 0, 0]}>
               {chartData.map((entry, index) => {
