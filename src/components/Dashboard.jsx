@@ -58,12 +58,12 @@ export default function Dashboard({ stats, dailyStats, user }) {
     }
   }
 
-  // Prepare chart data (last 14 days of selected month)
-  const chartData = monthlyStats.slice(0, 14).map(day => ({
-    date: new Date(day.date).toLocaleDateString('sr-Latn', { month: 'short', day: 'numeric' }),
+  // Prepare chart data (all days in selected month)
+  const chartData = monthlyStats.map(day => ({
+    date: new Date(day.date).toLocaleDateString('sr-Latn', { day: 'numeric' }),
     minutes: day.totalMinutes,
     metGoal: day.metGoal
-  }))
+  })).reverse() // Reverse to show chronologically (oldest to newest)
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color = 'primary' }) => (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">
@@ -116,7 +116,7 @@ export default function Dashboard({ stats, dailyStats, user }) {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-border">
         <h2 className="text-xl font-bold mb-4 flex items-center">
           <TrendingUp className="w-5 h-5 mr-2" />
-          Aktivnost (Zadnjih 14 Dana)
+          Aktivnost ({monthNames[selectedMonth]} {selectedYear})
         </h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
