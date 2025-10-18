@@ -13,7 +13,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -35,7 +35,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --production --ignore-scripts && \
+RUN npm install --production --ignore-scripts && \
     npm cache clean --force
 
 # Copy built frontend from builder
