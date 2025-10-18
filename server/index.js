@@ -280,6 +280,13 @@ app.post('/api/sessions', (req, res) => {
       }
     }
     
+    // Validate that we have sessions to add
+    if (!sessions || sessions.length === 0) {
+      return res.status(400).json({ 
+        error: 'Nisu pronađene sesije u poruci. Provjerite format (npr: "Lekcija 1\\n30m")' 
+      });
+    }
+    
     const addedSessions = [];
     for (const session of sessions) {
       const id = addSession(userId, session.lessonName, session.duration, date);
@@ -296,7 +303,9 @@ app.post('/api/sessions', (req, res) => {
     });
   } catch (error) {
     console.error('Error adding sessions:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: 'Greška pri obradi podataka. Provjerite format poruke.' 
+    });
   }
 });
 

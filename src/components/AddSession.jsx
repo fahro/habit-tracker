@@ -10,6 +10,8 @@ export default function AddSession({ userId, onSessionAdded, users }) {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState('')
+  const [sessionsAdded, setSessionsAdded] = useState(0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -59,6 +61,15 @@ export default function AddSession({ userId, onSessionAdded, users }) {
     e.preventDefault()
     setLoading(true)
     setSuccess(false)
+    setError('')
+    setSessionsAdded(0)
+
+    // Validacija
+    if (!message.trim()) {
+      setError('Molimo unesite podatke o sesijama')
+      setLoading(false)
+      return
+    }
 
     try {
       const response = await fetch('/api/sessions', {
@@ -76,16 +87,23 @@ export default function AddSession({ userId, onSessionAdded, users }) {
       const data = await response.json()
 
       if (response.ok) {
+        const count = data.count || data.sessions?.length || 1
+        setSessionsAdded(count)
         setSuccess(true)
         setMessage('')
         setUsername('')
         onSessionAdded()
         
-        setTimeout(() => setSuccess(false), 3000)
+        setTimeout(() => {
+          setSuccess(false)
+          setSessionsAdded(0)
+        }, 5000)
+      } else {
+        setError(data.error || 'Greška pri dodavanju sesija. Provjerite format poruke.')
       }
     } catch (error) {
       console.error('Error adding sessions:', error)
-      alert('Greška pri dodavanju sesija')
+      setError('Greška pri dodavanju sesija. Provjerite konekciju ili format podataka.')
     } finally {
       setLoading(false)
     }
@@ -96,9 +114,19 @@ export default function AddSession({ userId, onSessionAdded, users }) {
   return (
     <div className="space-y-6">
       {success && (
-        <div className="bg-success/10 border border-success text-success px-4 py-3 rounded-lg flex items-center gap-2">
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
-          <span className="font-medium">Sesija uspješno dodana!</span>
+          <span className="font-medium">
+            {sessionsAdded > 0 
+              ? `✅ Uspješno dodano ${sessionsAdded} ${sessionsAdded === 1 ? 'sesija' : sessionsAdded < 5 ? 'sesije' : 'sesija'}!`
+              : '✅ Sesija uspješno dodana!'}
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          <span className="font-medium">❌ {error}</span>
         </div>
       )}
 
@@ -204,6 +232,9 @@ export default function AddSession({ userId, onSessionAdded, users }) {
             </p>
           </div>
           <div>
+            <label className="block text-sm font-medium mb-2">
+              Poruka sa Sesijama
+            </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -212,6 +243,14 @@ export default function AddSession({ userId, onSessionAdded, users }) {
               className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
               required
             />
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs font-semibold text-blue-900 mb-1">📝 Primjeri formata:</p>
+              <div className="text-xs text-blue-700 space-y-1 font-mono">
+                <p>✓ Lekcija 1<br/>&nbsp;&nbsp;30m</p>
+                <p>✓ Lekcija 2 45m 30s</p>
+                <p>✓ Lekcija 3 1h 15m</p>
+              </div>
+            </div>
           </div>
 
           <button
