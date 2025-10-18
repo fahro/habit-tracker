@@ -6,7 +6,7 @@
 POST /api/webhook/message
 ```
 
-## 🆕 Format 1: Author + Content (Preporučeno)
+## 📋 Request Format
 
 ### Request
 
@@ -90,56 +90,6 @@ curl -X POST http://localhost:3001/api/webhook/message \
   }'
 ```
 
----
-
-## 📜 Format 2: Message (Backward Compatible)
-
-### Request
-
-```json
-{
-  "message": "Selim:\nGame 1 Chess Tactics\n30m\nGame 2 Opening Theory\n25m"
-}
-```
-
-### Parametri
-
-| Parametar | Tip | Obavezno | Opis |
-|-----------|-----|----------|------|
-| `message` | string | ✅ DA | Format: `Ime:\nLekcija\nTrajanje` ili samo `Lekcija\nTrajanje` |
-
-### Format Poruke
-
-#### Sa imenom:
-
-```
-Ime:
-Lekcija 1
-Trajanje 1
-Lekcija 2
-Trajanje 2
-```
-
-#### Bez imena (koristi prvog korisnika):
-
-```
-Lekcija 1
-Trajanje 1
-Lekcija 2
-Trajanje 2
-```
-
-### Primjer
-
-```bash
-curl -X POST http://localhost:3001/api/webhook/message \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Fahro:\nGame 1 Test\n30m\nGame 2 Test\n25m"
-  }'
-```
-
----
 
 ## ⏱️ Podržani Formati Trajanja
 
@@ -159,7 +109,7 @@ curl -X POST http://localhost:3001/api/webhook/message \
 ## 🔄 Auto-Create Korisnika
 
 Ako korisnik ne postoji, automatski će biti kreiran sa:
-- **Name:** Iz `author` ili `message`
+- **Name:** Iz `author` parametra
 - **Display Name:** Isto kao name
 - **Daily Goal:** 30 minuta (default)
 
@@ -167,7 +117,7 @@ Ako korisnik ne postoji, automatski će biti kreiran sa:
 
 ## 🧪 Testiranje
 
-### Test 1: Novi format
+### Test 1: Jednostavna sesija
 
 ```bash
 curl -X POST http://localhost:3001/api/webhook/message \
@@ -178,23 +128,25 @@ curl -X POST http://localhost:3001/api/webhook/message \
   }'
 ```
 
-### Test 2: Stari format
+### Test 2: Više sesija
 
 ```bash
 curl -X POST http://localhost:3001/api/webhook/message \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "TestUser:\nTest Lesson\n15m"
+    "author": "TestUser",
+    "content": "Lesson 1\n30m\nLesson 2\n45m\nLesson 3\n20m"
   }'
 ```
 
-### Test 3: Bez imena (koristi prvog korisnika)
+### Test 3: Različiti formati trajanja
 
 ```bash
 curl -X POST http://localhost:3001/api/webhook/message \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Test Lesson\n15m"
+    "author": "TestUser",
+    "content": "Lesson 1\n1h 30m\nLesson 2\n45m 30s\nLesson 3\n2h"
   }'
 ```
 

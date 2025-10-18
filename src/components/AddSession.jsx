@@ -239,30 +239,34 @@ export default function AddSession({ userId, onSessionAdded, users }) {
         
         <div className="space-y-3">
           <div>
-            <p className="text-xs font-semibold text-blue-900 mb-2">Format 1: Author + Content (Preporučeno)</p>
+            <p className="text-xs font-semibold text-blue-900 mb-2">📋 Format Zahtjeva (JSON)</p>
             <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
-              {'{\n  "author": "Ime",\n  "content": "Game 1\\n30m"\n}'}
+              {'{\n  "author": "Ime",\n  "content": "Game 1\\n30m\\nGame 2\\n25m"\n}'}
             </code>
-            <p className="text-xs text-blue-600 mt-1">
-              ✅ <strong>author</strong> je obavezan | Korisnik se automatski kreira ako ne postoji
-            </p>
-          </div>
-          
-          <div>
-            <p className="text-xs font-semibold text-blue-900 mb-2">Format 2: Message (Backward Compatible)</p>
-            <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
-              {'{\n  "message": "Ime:\\nGame 1\\n30m"\n}'}
-            </code>
-            <p className="text-xs text-blue-600 mt-1">
-              Format: <code className="bg-white px-1">Ime:</code> na prvoj liniji, zatim lekcije i trajanja
-            </p>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-blue-600">
+                ✅ <strong>author</strong> - Korisničko ime (obavezno)
+              </p>
+              <p className="text-xs text-blue-600">
+                ✅ <strong>content</strong> - Parovi: naziv lekcije + trajanje
+              </p>
+              <p className="text-xs text-blue-700 mt-2">
+                💡 Korisnik se automatski kreira ako ne postoji
+              </p>
+            </div>
           </div>
         </div>
         
         <div className="mt-4 pt-4 border-t border-blue-200">
-          <p className="text-xs text-blue-700">
-            <strong>Primjer trajanja:</strong> 30m, 1h 30m, 45m 30s, 2h
+          <p className="text-xs text-blue-700 mb-2">
+            <strong>Podržani formati trajanja:</strong>
           </p>
+          <div className="flex flex-wrap gap-2">
+            <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200">30m</code>
+            <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200">1h 30m</code>
+            <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200">45m 30s</code>
+            <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200">2h</code>
+          </div>
         </div>
       </div>
     </div>
