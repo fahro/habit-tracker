@@ -7,8 +7,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
   const [deletingUser, setDeletingUser] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
-    displayName: '',
-    dailyGoalMinutes: 30
+    displayName: ''
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -17,8 +16,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
   const resetForm = () => {
     setFormData({
       name: '',
-      displayName: '',
-      dailyGoalMinutes: 30
+      displayName: ''
     })
     setShowAddForm(false)
     setEditingUser(null)
@@ -39,8 +37,7 @@ export default function UserManagement({ users, onUsersUpdated }) {
         },
         body: JSON.stringify({
           name: formData.name.trim(),
-          displayName: formData.displayName.trim() || formData.name.trim(),
-          dailyGoalMinutes: parseInt(formData.dailyGoalMinutes)
+          displayName: formData.displayName.trim() || formData.name.trim()
         })
       })
 
@@ -255,24 +252,6 @@ export default function UserManagement({ users, onUsersUpdated }) {
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Dnevni Cilj (minute)
-              </label>
-              <input
-                type="number"
-                value={formData.dailyGoalMinutes}
-                onChange={(e) => setFormData({ ...formData, dailyGoalMinutes: e.target.value })}
-                min="1"
-                max="1440"
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Koliko minuta dnevno treba učiti da bi dan bio uspješan
-              </p>
-            </div>
-
             <div className="flex space-x-3">
               <button
                 type="submit"
@@ -389,7 +368,8 @@ export default function UserManagement({ users, onUsersUpdated }) {
           <li>• Korisničko ime mora biti jedinstveno</li>
           <li>• Novi korisnici se mogu kreirati i automatski pri dodavanju sesija</li>
           <li>• Svaki korisnik ima svoje statistike, nizove i kaznene bodove</li>
-          <li>• Možete urediti dnevni cilj za svakog korisnika</li>
+          <li>• Dnevni cilj za sve korisnike se postavlja u Postavkama na mjesečnom nivou</li>
+          <li>• Možete urediti dnevni cilj za svakog korisnika individualno</li>
           <li>• ⚠️ Brisanje korisnika će trajno obrisati sve njegove sesije</li>
         </ul>
       </div>
