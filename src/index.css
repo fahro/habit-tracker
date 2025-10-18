@@ -1,16 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f8fafc;
+  background: #fafbfc;
   min-height: 100vh;
+  color: #111827;
 }
 
 code {
@@ -22,16 +23,67 @@ code {
   box-sizing: border-box;
 }
 
-/* Clean card styling */
-.glass-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+/* Modern Input Styling */
+.input-modern {
+  @apply w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+  @apply transition-all duration-200;
 }
 
-/* Smooth transitions */
-.transition-smooth {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
+.input-modern:hover {
+  @apply border-gray-400;
+}
+
+.input-modern:focus {
+  @apply shadow-input;
+}
+
+/* Button Styles */
+.btn-primary {
+  @apply px-6 py-3 bg-primary text-white font-semibold rounded-xl;
+  @apply hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  @apply transition-all duration-200 shadow-sm hover:shadow-md;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-secondary text-gray-700 font-semibold rounded-xl border border-gray-300;
+  @apply hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300;
+  @apply transition-all duration-200;
+}
+
+/* Card Styles */
+.card {
+  @apply bg-white rounded-2xl shadow-card border border-gray-200;
+  @apply hover:shadow-card-hover transition-shadow duration-200;
+}
+
+/* Form Section */
+.form-section {
+  @apply space-y-5;
+}
+
+.form-label {
+  @apply block text-sm font-semibold text-gray-700 mb-2;
+}
+
+/* Badge Styles */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-primary {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge-warning {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800;
 }

@@ -7,34 +7,51 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(240 5.9% 90%)",
+        border: '#e5e7eb',
         primary: {
-          DEFAULT: '#2563eb',
+          DEFAULT: '#3b82f6',
+          dark: '#1d4ed8',
+          light: '#60a5fa',
           foreground: '#ffffff',
         },
         secondary: {
-          DEFAULT: '#f1f5f9',
-          foreground: '#0f172a',
+          DEFAULT: '#f3f4f6',
+          foreground: '#111827',
         },
         success: {
           DEFAULT: '#10b981',
+          dark: '#059669',
+          foreground: '#ffffff',
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          dark: '#d97706',
           foreground: '#ffffff',
         },
         destructive: {
           DEFAULT: '#ef4444',
+          dark: '#dc2626',
           foreground: '#ffffff',
         },
         muted: {
-          DEFAULT: '#f1f5f9',
-          foreground: '#64748b',
+          DEFAULT: '#f9fafb',
+          foreground: '#6b7280',
         },
-        background: '#ffffff',
-        foreground: '#0f172a',
-        border: '#e2e8f0',
+        background: '#fafbfc',
+        foreground: '#111827',
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'soft': '0 2px 8px rgba(0, 0, 0, 0.04)',
+        'card': '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.15)',
+        'input': '0 0 0 3px rgba(59, 130, 246, 0.1)',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        'xl': '0.75rem',
+        '2xl': '1rem',
       },
     },
   },

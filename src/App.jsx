@@ -126,47 +126,51 @@ function App() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-soft">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
             <div className="flex items-center space-x-4">
-              <div className="p-2 bg-primary rounded-lg">
-                <BookOpen className="w-8 h-8 text-white" />
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md">
+                <BookOpen className="w-7 h-7 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Study Tracker</h1>
+                <p className="text-xs text-gray-500">Prati svoj napredak</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              {/* User Selector - Highlighted */}
-              {users.length > 0 && (
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 py-2 flex items-center space-x-3 shadow-sm">
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm font-semibold text-blue-900">Aktivni korisnik:</span>
+            
+            {/* User Selector */}
+            {users.length > 0 && (
+              <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl px-5 py-3 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500 rounded-lg">
+                    <Users className="w-4 h-4 text-white" />
                   </div>
-                  <select
-                    value={selectedUserId || ''}
-                    onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                    className="bg-white border border-blue-300 rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all cursor-pointer"
-                  >
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.display_name || user.name}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="text-sm font-bold text-gray-700">Korisnik:</span>
                 </div>
-              )}
-            </div>
+                <select
+                  value={selectedUserId || ''}
+                  onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
+                  className="bg-white border-2 border-blue-300 rounded-xl px-4 py-2 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all cursor-pointer shadow-sm"
+                >
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.display_name || user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-          <div className="flex items-center space-x-2 mt-4">
+          {/* Navigation */}
+          <div className="flex items-center gap-2 pb-4 pt-3 border-t border-gray-100 mt-3">
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
                   activeTab === 'dashboard'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <TrendingUp className="w-4 h-4 inline mr-2" />
@@ -174,10 +178,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
                   activeTab === 'add'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -185,10 +189,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
                   activeTab === 'users'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -196,10 +200,10 @@ function App() {
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
                   activeTab === 'settings'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <Settings className="w-4 h-4 inline mr-2" />

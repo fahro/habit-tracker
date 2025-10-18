@@ -240,22 +240,22 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color = 'primary' }) => {
     const colorClasses = {
-      'orange-500': 'from-orange-500 to-orange-600',
-      'primary': 'from-purple-500 to-blue-600',
-      'success': 'from-green-500 to-emerald-600',
-      'destructive': 'from-red-500 to-pink-600'
+      'orange-500': { bg: 'bg-orange-500', text: 'text-orange-600' },
+      'primary': { bg: 'bg-primary', text: 'text-primary' },
+      'success': { bg: 'bg-success', text: 'text-success' },
+      'destructive': { bg: 'bg-destructive', text: 'text-destructive' }
     }
-    const gradient = colorClasses[color] || colorClasses['primary']
+    const colors = colorClasses[color] || colorClasses['primary']
     
     return (
-      <div className="glass-card rounded-2xl p-6 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
+      <div className="bg-white rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all border border-gray-200">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-semibold text-gray-600 mb-2">{title}</p>
-            <p className={`text-4xl font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>{value}</p>
+            <p className={`text-4xl font-bold ${colors.text}`}>{value}</p>
             {subtitle && <p className="text-sm text-gray-500 mt-2 font-medium">{subtitle}</p>}
           </div>
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} shadow-lg`}>
+          <div className={`p-3 rounded-lg ${colors.bg}`}>
             <Icon className="w-6 h-6 text-white" />
           </div>
         </div>
@@ -318,12 +318,12 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
       </div>
 
       {/* Chart */}
-      <div className="glass-card rounded-2xl p-6 shadow-lg">
+      <div className="bg-white rounded-lg p-6 shadow-card border border-gray-200">
         <h2 className="text-xl font-bold mb-6 flex items-center">
-          <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+          <div className="p-2 bg-primary rounded-lg mr-3">
             <TrendingUp className="w-5 h-5 text-white" />
           </div>
-          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <span className="text-gray-900">
             Aktivnost ({monthNames[selectedMonth]} {selectedYear})
           </span>
         </h2>
@@ -386,14 +386,14 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
       </div>
 
       {/* Daily Breakdown */}
-      <div className="glass-card rounded-2xl p-6 shadow-lg">
+      <div className="bg-white rounded-lg p-6 shadow-card border border-gray-200">
         {/* Month Selector */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold flex items-center">
-            <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+            <div className="p-2 bg-primary rounded-lg mr-3">
               <Calendar className="w-5 h-5 text-white" />
             </div>
-            <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <span className="text-gray-900">
               Mjesečni Pregled
             </span>
           </h2>
@@ -439,16 +439,24 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
             monthlyStats.map((day, index) => {
             const date = new Date(day.date)
             const isToday = day.date === new Date().toISOString().split('T')[0]
-            
-            const canInteract = day.sessionCount > 0 || isEditableDate(day.date)
+            const isYesterday = day.date === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+            const isEditable = isEditableDate(day.date)
+            const canInteract = day.sessionCount > 0 || isEditable
+            const needsSession = isEditable && day.sessionCount === 0
             
             return (
               <div
                 key={day.date}
                 onClick={() => canInteract && fetchDaySessions(day.date)}
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all transform ${
-                  isToday ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 shadow-glow-sm' : 'bg-white/50 border-white/30 hover:bg-white/80 hover:shadow-md'
-                } ${canInteract ? 'cursor-pointer hover:scale-102' : ''}`}
+                className={`relative flex items-center justify-between p-4 rounded-xl border transition-all ${
+                  needsSession 
+                    ? 'bg-red-50 border-2 border-red-300 shadow-md animate-pulse cursor-pointer hover:shadow-lg' 
+                    : isEditable
+                      ? 'bg-blue-50 border-2 border-blue-300 shadow-sm cursor-pointer hover:shadow-md'
+                      : isToday
+                        ? 'bg-gray-50 border-gray-200'
+                        : 'bg-white border-gray-200'
+                } ${canInteract && !isEditable ? 'cursor-pointer hover:shadow-md' : ''}`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${
@@ -466,18 +474,33 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
                       <XCircle className="w-5 h-5" />
                     )}
                   </div>
-                  <div>
-                    <p className="font-medium">
-                      {date.toLocaleDateString('sr-Latn', { 
-                        weekday: 'long', 
-                        day: 'numeric', 
-                        month: 'long' 
-                      })}
-                      {isToday && <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">Danas</span>}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium">
+                        {date.toLocaleDateString('sr-Latn', { 
+                          weekday: 'long', 
+                          day: 'numeric', 
+                          month: 'long' 
+                        })}
+                      </p>
+                      {isToday && <span className="text-xs bg-gray-900 text-white px-2 py-1 rounded-md font-semibold">Danas</span>}
+                      {isYesterday && <span className="text-xs bg-gray-600 text-white px-2 py-1 rounded-md font-semibold">Juče</span>}
+                      {isEditable && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md font-semibold flex items-center gap-1">
+                          <Edit2 className="w-3 h-3" />
+                          Može se editovati
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
                       {day.sessionCount} {day.sessionCount === 1 ? 'sesija' : 'sesija'} · {formatTime(day.totalSeconds)}
                     </p>
+                    {needsSession && (
+                      <div className="mt-2 flex items-center gap-2 text-red-600 font-semibold text-sm">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Unesi sesiju za ovaj dan!</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -502,8 +525,8 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
 
       {/* Day Details Modal */}
       {selectedDate && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeDayDetails}>
-          <div className="glass-card rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDayDetails}>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl border border-gray-200" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white">
               <div>
                 <h3 className="text-xl font-bold flex items-center gap-2">
@@ -700,12 +723,12 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
                   
                   {/* Batch Add Sessions Form - Only for today/yesterday */}
                   {isEditableDate(selectedDate) && (
-                    <div className="glass-card rounded-2xl p-6 border-2 border-purple-300">
+                    <div className="bg-white rounded-lg p-6 border-2 border-blue-300 shadow-sm">
                       <h4 className="text-lg font-bold mb-4 flex items-center">
-                        <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+                        <div className="p-2 bg-primary rounded-lg mr-3">
                           <Plus className="w-5 h-5 text-white" />
                         </div>
-                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                        <span className="text-gray-900">
                           Dodaj Sesije
                         </span>
                       </h4>
@@ -732,7 +755,7 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
                         <button
                           type="submit"
                           disabled={addingBatch}
-                          className="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold hover:shadow-glow transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                          className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:shadow-card-hover transition-all disabled:opacity-50"
                         >
                           {addingBatch ? 'Dodavanje...' : 'Dodaj Sesije'}
                         </button>

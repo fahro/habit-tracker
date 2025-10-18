@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Clock, BookOpen, CheckCircle, Link2, Calendar } from 'lucide-react'
+import { Plus, Clock, BookOpen, CheckCircle, Link2, Calendar, Users } from 'lucide-react'
 
 export default function AddSession({ userId, onSessionAdded, users }) {
   const [lessonName, setLessonName] = useState('')
@@ -121,8 +121,8 @@ export default function AddSession({ userId, onSessionAdded, users }) {
   return (
     <div className="space-y-6">
       {success && (
-        <div className="glass-card border-2 border-green-400 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-lg">
-          <div className="p-2 bg-gradient-success rounded-xl">
+        <div className="bg-green-50 border-2 border-green-400 px-6 py-4 rounded-lg flex items-center gap-3 shadow-sm">
+          <div className="p-2 bg-success rounded-lg">
             <CheckCircle className="w-5 h-5 text-white" />
           </div>
           <span className="font-semibold text-gray-800">
@@ -134,22 +134,23 @@ export default function AddSession({ userId, onSessionAdded, users }) {
       )}
 
       {error && (
-        <div className="glass-card border-2 border-red-400 px-6 py-4 rounded-2xl shadow-lg">
+        <div className="bg-red-50 border-2 border-red-400 px-6 py-4 rounded-lg shadow-sm">
           <span className="font-semibold text-red-700">❌ {error}</span>
         </div>
       )}
 
       {/* Manual Entry */}
-      <div className="glass-card rounded-2xl p-6 shadow-lg">
-        <h2 className="text-xl font-bold mb-6 flex items-center">
-          <div className="p-2 bg-gradient-primary rounded-lg mr-3">
-            <Plus className="w-5 h-5 text-white" />
+      <div className="card p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+            <Plus className="w-6 h-6 text-white" />
           </div>
-          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Dodaj Sesiju Ručno
-          </span>
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Dodaj Novu Sesiju</h2>
+            <p className="text-sm text-gray-500 mt-1">Unesi detalje studijske sesije</p>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="form-section">
           <div>
             <label className="block text-sm font-medium mb-2">
               <BookOpen className="w-4 h-4 inline mr-1" />
@@ -159,65 +160,66 @@ export default function AddSession({ userId, onSessionAdded, users }) {
               type="text"
               value={lessonName}
               onChange={(e) => setLessonName(e.target.value)}
-              placeholder='Game 1. Steinitz W. - Lipke P. "Play against isolated pawn"'
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="npr. Lekcija 1, Game 1, Poglavlje 3..."
+              className="input-modern"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
-              <Clock className="w-4 h-4 inline mr-1" />
+            <label className="form-label flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-600" />
               Trajanje
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative">
                 <input
                   type="number"
                   value={hours}
                   onChange={(e) => setHours(e.target.value)}
-                  min="0"
                   placeholder="0"
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                  min="0"
+                  className="input-modern text-center"
+                  required
                 />
-                <p className="text-xs text-muted-foreground text-center mt-1">Sati</p>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">h</span>
               </div>
-              <div>
+              <div className="relative">
                 <input
                   type="number"
                   value={minutes}
                   onChange={(e) => setMinutes(e.target.value)}
+                  placeholder="0"
                   min="0"
                   max="59"
-                  placeholder="0"
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                  className="input-modern text-center"
                 />
-                <p className="text-xs text-muted-foreground text-center mt-1">Minuta</p>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">min</span>
               </div>
-              <div>
+              <div className="relative">
                 <input
                   type="number"
                   value={seconds}
                   onChange={(e) => setSeconds(e.target.value)}
+                  placeholder="0"
                   min="0"
                   max="59"
-                  placeholder="0"
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                  className="input-modern text-center"
                 />
-                <p className="text-xs text-muted-foreground text-center mt-1">Sekundi</p>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">sek</span>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
-              <Calendar className="w-4 h-4 inline mr-1" />
+            <label className="form-label flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-600" />
               Datum
             </label>
             <select
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+              className="input-modern cursor-pointer"
             >
               <option value="today">Danas ({new Date().toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long' })})</option>
               <option value="yesterday">Juče ({new Date(Date.now() - 86400000).toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long' })})</option>
@@ -227,29 +229,52 @@ export default function AddSession({ userId, onSessionAdded, users }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold hover:shadow-glow transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+            className="btn-primary w-full mt-2"
           >
-            {loading ? 'Dodavanje...' : 'Dodaj Sesiju'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Clock className="w-4 h-4 animate-spin" />
+                Dodavanje...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <Plus className="w-5 h-5" />
+                Dodaj Sesiju
+              </span>
+            )}
           </button>
         </form>
       </div>
 
       {/* Message Format Entry */}
-      <div className="glass-card rounded-2xl p-6 shadow-lg">
-        <h2 className="text-xl font-bold mb-6 flex items-center">
-          <div className="p-2 bg-gradient-primary rounded-lg mr-3">
-            <BookOpen className="w-5 h-5 text-white" />
+      <div className="card p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+            <BookOpen className="w-6 h-6 text-white" />
           </div>
-          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Dodaj Više Sesija Odjednom
-          </span>
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Zalijepite poruku u formatu sa Vibera/WhatsAppa. Prva linija može biti ime korisnika (opciono).
-        </p>
-        <form onSubmit={handleMessageSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <h2 className="text-2xl font-bold text-gray-900">Batch Import</h2>
+            <p className="text-sm text-gray-500 mt-1">Dodaj više sesija odjednom</p>
+          </div>
+        </div>
+        <form onSubmit={handleMessageSubmit} className="form-section">
+          <div>
+            <label className="form-label flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-gray-600" />
+              Naziv Lekcije
+            </label>
+            <input
+              type="text"
+              value={lessonName}
+              onChange={(e) => setLessonName(e.target.value)}
+              placeholder="npr. Lekcija 1, Game 1, Poglavlje 3..."
+              className="input-modern"
+              required
+            />
+          </div>
+          <div>
+            <label className="form-label flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-600" />
               Ime Korisnika (opciono)
             </label>
             <input
@@ -257,30 +282,38 @@ export default function AddSession({ userId, onSessionAdded, users }) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Npr: Fahro, Marko..."
-              className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+              className="input-modern"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Ako je prazno, koristi se trenutno izabrani korisnik. Novi korisnik će biti automatski kreiran.
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Ako je prazno, koristi se trenutno izabrani korisnik
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="form-label">
               Poruka sa Sesijama
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder={`Fahro:\nGame 1. Steinitz W. - Lipke P. "Play against isolated pawn"\n18m 32s\nGame 1. Schlechter C. - John W. "2 Important Rules"\n22m 11s\n\nIli bez imena:\nGame 1. Test\n25m`}
+              placeholder={`Game 1. Steinitz\n18m 32s\nGame 2. Schlechter\n22m 11s`}
               rows={8}
-              className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all font-mono text-sm"
+              className="input-modern font-mono text-sm"
               required
             />
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs font-semibold text-blue-900 mb-1">📝 Primjeri formata:</p>
-              <div className="text-xs text-blue-700 space-y-1 font-mono">
-                <p>✓ Lekcija 1<br/>&nbsp;&nbsp;30m</p>
-                <p>✓ Lekcija 2 45m 30s</p>
-                <p>✓ Lekcija 3 1h 15m</p>
+            <div className="mt-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+              <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <span className="text-lg">📝</span>
+                Format primjeri:
+              </p>
+              <div className="text-sm text-blue-800 space-y-2 font-mono bg-white/60 p-3 rounded-lg">
+                <p className="flex items-start gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span>Lekcija 1<br/>&nbsp;&nbsp;30m</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span>Lekcija 2 45m 30s</span>
+                </p>
               </div>
             </div>
           </div>
@@ -288,23 +321,34 @@ export default function AddSession({ userId, onSessionAdded, users }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold hover:shadow-glow transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+            className="btn-primary w-full mt-2"
           >
-            {loading ? 'Dodavanje...' : 'Dodaj Sesije'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Clock className="w-4 h-4 animate-spin" />
+                Dodavanje...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <BookOpen className="w-5 h-5" />
+                Dodaj Sesije
+              </span>
+            )}
           </button>
         </form>
       </div>
 
       {/* Webhook Info */}
-      <div className="glass-card rounded-2xl p-6 shadow-lg border-2 border-blue-300">
-        <h2 className="text-xl font-bold mb-6 flex items-center">
-          <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg mr-3">
-            <Link2 className="w-5 h-5 text-white" />
+      <div className="card p-8 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg">
+            <Link2 className="w-6 h-6 text-white" />
           </div>
-          <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-            Webhook URL za Integraciju
-          </span>
-        </h2>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">API Webhook</h2>
+            <p className="text-sm text-gray-600 mt-1">Za automatsku integraciju</p>
+          </div>
+        </div>
         <p className="text-sm text-blue-800 mb-3">
           Koristite ovaj URL za automatsko slanje poruka iz Viber/WhatsApp bota:
         </p>
