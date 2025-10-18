@@ -1,4 +1,7 @@
-# Multi-stage build for optimal image size
+# Railway Production Dockerfile
+# Optimized multi-stage build for Railway deployment
+
+# Build stage
 FROM node:18-alpine AS builder
 
 # Install build dependencies for better-sqlite3
@@ -9,7 +12,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies
+# Install all dependencies (including dev dependencies for build)
 RUN npm install
 
 # Copy source code
@@ -21,8 +24,10 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine
 
-# Install runtime dependencies for better-sqlite3
-RUN apk add --no-cache sqlite
+# Install runtime dependencies
+RUN apk add --no-cache \
+    sqlite \
+    dumb-init
 
 WORKDIR /app
 
@@ -30,7 +35,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm install --production
+RUN npm install --production --ignore-scripts && \
+    npm cache clean --force
 
 # Copy built frontend from builder
 COPY --from=builder /app/dist ./dist
@@ -38,19 +44,23 @@ COPY --from=builder /app/dist ./dist
 # Copy backend code
 COPY server ./server
 
-# Create directory for database
-RUN mkdir -p /app/data
+# Create directory for database with proper permissions
+RUN mkdir -p /app/data && \
+    chown -R node:node /app
 
-# Expose port
-EXPOSE 3001
+# Use non-root user for security
+USER node
 
-# Set environment to production
+# Railway sets PORT environment variable
+# We ensure the app listens on 0.0.0.0 to be accessible
 ENV NODE_ENV=production
-ENV PORT=3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Health check for Railway
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:'+process.env.PORT+'/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
 
 # Start server
-CMD ["npm", "start"]
+CMD ["node", "server/index.js"]
