@@ -240,19 +240,34 @@ export default function AddSession({ userId, onSessionAdded, users }) {
         <div className="space-y-3">
           <div>
             <p className="text-xs font-semibold text-blue-900 mb-2">📋 Format Zahtjeva (JSON)</p>
-            <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto mb-2">
-              {'{\n  "author": "Ime",\n  "content": "Game 1\\n30m\\nGame 2\\n25m"\n}'}
-            </code>
-            <p className="text-xs text-blue-500 mb-2">ili koristite <code className="bg-white px-1 border border-blue-200">"message"</code> umjesto <code className="bg-white px-1 border border-blue-200">"content"</code></p>
+            
+            <div className="space-y-2 mb-3">
+              <div>
+                <p className="text-xs text-blue-700 mb-1">Sa novim linijama:</p>
+                <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
+                  {'{\n  "author": "Ime",\n  "content": "Game 1\\n30m\\nGame 2\\n25m"\n}'}
+                </code>
+              </div>
+              
+              <div>
+                <p className="text-xs text-blue-700 mb-1">Inline (bez novih linija):</p>
+                <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
+                  {'{\n  "author": "Ime",\n  "content": "Game 1 30m Game 2 25m"\n}'}
+                </code>
+              </div>
+            </div>
+            
+            <p className="text-xs text-blue-500 mb-2">💡 Možete koristiti <code className="bg-white px-1 border border-blue-200">"message"</code> umjesto <code className="bg-white px-1 border border-blue-200">"content"</code></p>
+            
             <div className="mt-2 space-y-1">
               <p className="text-xs text-blue-600">
                 ✅ <strong>author</strong> - Korisničko ime (obavezno)
               </p>
               <p className="text-xs text-blue-600">
-                ✅ <strong>content</strong> ili <strong>message</strong> - Parovi: naziv lekcije + trajanje
+                ✅ <strong>content/message</strong> - Lekcije sa trajanjima
               </p>
               <p className="text-xs text-blue-700 mt-2">
-                💡 Korisnik se automatski kreira ako ne postoji
+                🤖 Automatski kreira korisnika | Prepoznaje trajanja
               </p>
             </div>
           </div>

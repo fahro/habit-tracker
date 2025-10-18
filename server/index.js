@@ -64,7 +64,49 @@ function parseMessage(message) {
     }
   }
   
-  // Parse sessions (lesson + duration pairs)
+  // Check if it's inline format (single line or no clear line separation)
+  if (lines.length <= 2) {
+    const contentLine = lines.slice(startIndex).join(' ').trim();
+    
+    // Try to parse inline format: "Lesson 1 30m Lesson 2 45m"
+    // Regex to match duration patterns: 1h 30m 45s, 30m, 1h, etc.
+    const durationPattern = /(\d+h\s*\d+m\s*\d+s|\d+h\s*\d+m|\d+m\s*\d+s|\d+h|\d+m|\d+s)/gi;
+    
+    const matches = [];
+    let match;
+    while ((match = durationPattern.exec(contentLine)) !== null) {
+      matches.push({
+        duration: match[0],
+        index: match.index
+      });
+    }
+    
+    if (matches.length > 0) {
+      // Parse sessions based on duration positions
+      for (let i = 0; i < matches.length; i++) {
+        const currentMatch = matches[i];
+        const nextMatch = matches[i + 1];
+        
+        // Lesson name is before the duration
+        const lessonStart = i === 0 ? 0 : matches[i - 1].index + matches[i - 1].duration.length;
+        const lessonEnd = currentMatch.index;
+        const lessonName = contentLine.substring(lessonStart, lessonEnd).trim();
+        
+        const durationSeconds = parseTimeToSeconds(currentMatch.duration);
+        
+        if (lessonName && durationSeconds > 0) {
+          sessions.push({
+            lessonName,
+            duration: durationSeconds
+          });
+        }
+      }
+      
+      return { username, sessions };
+    }
+  }
+  
+  // Original format: line-by-line (lesson + duration pairs)
   for (let i = startIndex; i < lines.length; i += 2) {
     if (i + 1 < lines.length) {
       const lessonName = lines[i].trim();

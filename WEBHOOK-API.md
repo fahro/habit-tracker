@@ -35,6 +35,22 @@ POST /api/webhook/message
 
 **Napomena:** Možete koristiti bilo `content` ili `message` parametar - oba rade isto.
 
+### 📝 Format Content-a
+
+#### Format 1: Sa novim linijama (preporučeno)
+```
+"Game 1\n30m\nGame 2\n45m"
+```
+
+Svaka lekcija i trajanje na odvojenoj liniji.
+
+#### Format 2: Inline (bez novih linija)
+```
+"Game 1 30m Game 2 45m"
+```
+
+Sve u jednoj liniji - sistem automatski prepoznaje trajanja i dijeli lekcije.
+
 ### Response (Success)
 
 ```json
@@ -150,7 +166,18 @@ curl -X POST http://localhost:3001/api/webhook/message \
   }'
 ```
 
-### Test 3: Različiti formati trajanja
+### Test 3: Inline format (bez novih linija)
+
+```bash
+curl -X POST http://localhost:3001/api/webhook/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "author": "TestUser",
+    "content": "Lesson 1 30m Lesson 2 45m Lesson 3 1h 15m"
+  }'
+```
+
+### Test 4: Različiti formati trajanja
 
 ```bash
 curl -X POST http://localhost:3001/api/webhook/message \
