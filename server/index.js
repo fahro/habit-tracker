@@ -215,7 +215,7 @@ app.post('/api/sessions', (req, res) => {
     let sessions = [];
     let userId = req.body.userId || undefined;
     let username = req.body.username || undefined;
-    const date = new Date().toISOString().split('T')[0];
+    const date = req.body.date || new Date().toISOString().split('T')[0];
     
     // Check if it's a text message (from Viber/WhatsApp)
     if (typeof req.body === 'string') {
@@ -315,7 +315,7 @@ app.get('/api/stats/overall', (req, res) => {
 // Webhook endpoint for Viber/WhatsApp
 app.post('/api/webhook/message', (req, res) => {
   try {
-    const date = new Date().toISOString().split('T')[0];
+    const date = req.body.date || new Date().toISOString().split('T')[0];
     let username;
     let sessions;
     
