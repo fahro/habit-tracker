@@ -28,14 +28,14 @@ else
 fi
 echo ""
 
-# Set monthly goals for August, September, October
+# Set monthly goals for July, August, September, October
 echo -e "${BLUE}Postavljanje mjesečnih ciljeva...${NC}"
-for month in 7 8 9; do
-    MONTH_NAME=("" "" "" "" "" "" "" "August" "Septembar" "Oktobar")
-    curl -s -X POST $RAILWAY_URL/api/settings/monthly \
-      -H "Content-Type: application/json" \
-      -d "{\"year\":2025,\"month\":$month,\"dailyGoalMinutes\":30}" > /dev/null
-    echo -e "${GREEN}  ✓ ${MONTH_NAME[$month]} 2025: 30 minuta${NC}"
+for month in 6 7 8 9; do
+  MONTH_NAME=("" "" "" "" "" "" "Jul" "August" "Septembar" "Oktobar")
+  curl -s -X POST $RAILWAY_URL/api/settings/monthly \
+    -H "Content-Type: application/json" \
+    -d "{\"year\":2025,\"month\":$month,\"dailyGoalMinutes\":30}" > /dev/null
+  echo -e "${GREEN}  ✓ ${MONTH_NAME[$month]} 2025: 30 minuta${NC}"
 done
 echo ""
 
@@ -78,6 +78,44 @@ add_session() {
         \"date\": \"$date\"
       }" > /dev/null
 }
+
+# Generate sessions for JULY (2025-07-01 to 2025-07-31)
+echo -e "${BLUE}Generisanje podataka za JUL 2025...${NC}"
+
+lesson=1
+for day in {1..31}; do
+    date=$(printf "2025-07-%02d" $day)
+    
+    # DOBRI HASO - radi skoro svaki dan (90% dana)
+    if [ $((RANDOM % 10)) -lt 9 ]; then
+        minutes=$((35 + RANDOM % 30))  # 35-65 minuta
+        add_session $HASO_ID "Haso" $date $minutes $lesson
+        ((lesson++))
+    fi
+    
+    # POŠTENI MUJO - radi većinu dana (75% dana)
+    if [ $((RANDOM % 4)) -lt 3 ]; then
+        minutes=$((30 + RANDOM % 25))  # 30-55 minuta
+        add_session $MUJO_ID "Mujo" $date $minutes $lesson
+        ((lesson++))
+    fi
+    
+    # LIJENI SULJO - radi ponekad (50% dana, sa grupama propusta za penale)
+    if [ $day -ge 8 ] && [ $day -le 9 ]; then
+        # Propust 1: 8-9 jul (2 dana = 1 penal)
+        :
+    elif [ $day -ge 20 ] && [ $day -le 21 ]; then
+        # Propust 2: 20-21 jul (2 dana = 1 penal)
+        :
+    else
+        if [ $((RANDOM % 2)) -eq 0 ]; then
+            minutes=$((25 + RANDOM % 20))  # 25-45 minuta
+            add_session $SULJO_ID "Suljo" $date $minutes $lesson
+            ((lesson++))
+        fi
+    fi
+done
+echo -e "${GREEN}  ✓ Jul podaci generisani${NC}"
 
 # Generate sessions for AUGUST (2025-08-01 to 2025-08-31)
 echo -e "${BLUE}Generisanje podataka za AUGUST 2025...${NC}"
@@ -194,9 +232,13 @@ echo -e "${GREEN}  ✓ Oktobar podaci generisani${NC}"
 echo ""
 
 # Update user creation dates to August 1st
-echo -e "${BLUE}Ažuriranje datuma kreiranja korisnika...${NC}"
-sqlite3 /tmp/temp.db "PRAGMA foreign_keys=ON;" 2>/dev/null || true
-echo -e "${YELLOW}  (Ovo se mora uraditi ručno na Railway bazi)${NC}"
+echo -e "${BLUE}Ažuriranje datuma kreiranja korisnika na 2025-07-01...${NC}"
+for user_id in $HASO_ID $MUJO_ID $SULJO_ID; do
+  curl -s -X PATCH $RAILWAY_URL/api/users/$user_id/created-at \
+    -H "Content-Type: application/json" \
+    -d '{"createdAt":"2025-07-01 00:00:00"}' > /dev/null
+done
+echo -e "${GREEN}  ✓ Datumi ažurirani${NC}"
 echo ""
 
 # Show final statistics
@@ -231,10 +273,10 @@ echo -e "${GREEN}═════════════════════
 echo -e "${GREEN}✓ Svi podaci uspješno generisani!${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo ""
-echo -e "${YELLOW}📋 Očekivani penali:${NC}"
+echo -e "${YELLOW}📋 Očekivani penali (Juli-Oktobar):${NC}"
 echo -e "  ${GREEN}Dobri Haso: 0-1 penala${NC} (radi skoro svaki dan)"
-echo -e "  ${BLUE}Pošteni Mujo: 1-2 penala${NC} (solidno radi)"
-echo -e "  ${RED}Lijeni Suljo: 5-6 penala${NC} (lijen, propušta često)"
+echo -e "  ${BLUE}Pošteni Mujo: 1-3 penala${NC} (solidno radi)"
+echo -e "  ${RED}Lijeni Suljo: 8-10 penala${NC} (lijen, propušta često)"
 echo ""
 echo -e "🌐 Otvorite: $RAILWAY_URL"
 echo ""
