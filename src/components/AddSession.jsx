@@ -260,20 +260,6 @@ export default function AddSession({ userId, onSessionAdded, users }) {
         <form onSubmit={handleMessageSubmit} className="form-section">
           <div>
             <label className="form-label flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-gray-600" />
-              Naziv Lekcije
-            </label>
-            <input
-              type="text"
-              value={lessonName}
-              onChange={(e) => setLessonName(e.target.value)}
-              placeholder="npr. Lekcija 1, Game 1, Poglavlje 3..."
-              className="input-modern"
-              required
-            />
-          </div>
-          <div>
-            <label className="form-label flex items-center gap-2">
               <Users className="w-4 h-4 text-gray-600" />
               Ime Korisnika (opciono)
             </label>
@@ -289,29 +275,29 @@ export default function AddSession({ userId, onSessionAdded, users }) {
             </p>
           </div>
           <div>
-            <label className="form-label">
-              Poruka sa Sesijama
+            <label className="form-label text-base font-bold text-gray-900 mb-3">
+              📝 Unesi sesije
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={`Game 1. Steinitz\n18m 32s\nGame 2. Schlechter\n22m 11s`}
-              rows={8}
-              className="input-modern font-mono text-sm"
+              rows={10}
+              className="input-modern font-mono text-base bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 focus:border-green-500 focus:bg-white shadow-sm"
               required
             />
-            <div className="mt-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-              <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+              <p className="text-sm font-bold text-green-900 mb-3 flex items-center gap-2">
                 <span className="text-lg">📝</span>
                 Format primjeri:
               </p>
-              <div className="text-sm text-blue-800 space-y-2 font-mono bg-white/60 p-3 rounded-lg">
+              <div className="text-sm text-green-800 space-y-2 font-mono bg-white/70 p-3 rounded-lg">
                 <p className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600 font-bold">✓</span>
                   <span>Lekcija 1<br/>&nbsp;&nbsp;30m</span>
                 </p>
                 <p className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600 font-bold">✓</span>
                   <span>Lekcija 2 45m 30s</span>
                 </p>
               </div>

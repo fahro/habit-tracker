@@ -732,32 +732,52 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
                           Dodaj Sesije
                         </span>
                       </h4>
-                      <form onSubmit={handleBatchSubmit} className="space-y-4">
+                      <form onSubmit={handleBatchSubmit} className="form-section">
                         <div>
-                          <label className="block text-sm font-semibold mb-2 text-gray-700">
-                            Unesi sesije (jedna po liniji ili inline)
+                          <label className="form-label text-base font-bold text-gray-900 mb-3">
+                            📝 Unesi sesije
                           </label>
                           <textarea
                             value={batchMessage}
                             onChange={(e) => setBatchMessage(e.target.value)}
                             placeholder="Game 1. Test\n30m 15s\nGame 2. Test 2\n45m"
-                            rows={6}
-                            className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all font-mono text-sm"
+                            rows={8}
+                            className="input-modern font-mono text-base bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 focus:border-blue-500 focus:bg-white shadow-sm"
+                            autoFocus
                           />
-                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-xs font-semibold text-blue-900 mb-1">📝 Primjeri:</p>
-                            <div className="text-xs text-blue-700 space-y-1 font-mono">
-                              <p>✓ Lekcija 1<br/>&nbsp;&nbsp;30m</p>
-                              <p>✓ Lekcija 2 45m 30s</p>
+                          <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+                            <p className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                              <span className="text-lg">📝</span>
+                              Format primjeri:
+                            </p>
+                            <div className="text-sm text-blue-800 space-y-2 font-mono bg-white/70 p-3 rounded-lg">
+                              <p className="flex items-start gap-2">
+                                <span className="text-green-600 font-bold">✓</span>
+                                <span>Lekcija 1<br/>&nbsp;&nbsp;30m</span>
+                              </p>
+                              <p className="flex items-start gap-2">
+                                <span className="text-green-600 font-bold">✓</span>
+                                <span>Lekcija 2 45m 30s</span>
+                              </p>
                             </div>
                           </div>
                         </div>
                         <button
                           type="submit"
                           disabled={addingBatch}
-                          className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:shadow-card-hover transition-all disabled:opacity-50"
+                          className="btn-primary w-full mt-2"
                         >
-                          {addingBatch ? 'Dodavanje...' : 'Dodaj Sesije'}
+                          {addingBatch ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <Clock className="w-4 h-4 animate-spin" />
+                              Dodavanje...
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center gap-2">
+                              <Plus className="w-5 h-5" />
+                              Dodaj Sesije
+                            </span>
+                          )}
                         </button>
                       </form>
                     </div>
