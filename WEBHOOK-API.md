@@ -17,12 +17,23 @@ POST /api/webhook/message
 }
 ```
 
+**Ili:**
+
+```json
+{
+  "author": "Selim",
+  "message": "Game 1 Chess Tactics\n30m\nGame 2 Opening Theory\n25m"
+}
+```
+
 ### Parametri
 
 | Parametar | Tip | Obavezno | Opis |
 |-----------|-----|----------|------|
 | `author` | string | ✅ DA | Korisničko ime (auto-create ako ne postoji) |
-| `content` | string | ✅ DA | Parovi: naziv lekcije + trajanje |
+| `content` ili `message` | string | ✅ DA | Parovi: naziv lekcije + trajanje |
+
+**Napomena:** Možete koristiti bilo `content` ili `message` parametar - oba rade isto.
 
 ### Response (Success)
 

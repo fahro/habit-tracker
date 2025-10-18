@@ -277,25 +277,30 @@ app.post('/api/webhook/message', (req, res) => {
     let username;
     let sessions;
     
-    // NEW FORMAT: { author: "Name", content: "Game 1\n30m" }
-    if (req.body.author && req.body.content) {
+    // Check if author is provided
+    if (req.body.author) {
       username = req.body.author.trim();
       
       if (!username) {
         return res.status(400).json({ 
-          error: 'Author je obavezan parametar' 
+          error: 'Author ne može biti prazan' 
         });
       }
       
-      console.log('New format - Author:', username);
-      console.log('New format - Content:', req.body.content);
+      // Content can be in 'content' or 'message' parameter
+      const content = req.body.content || req.body.message;
       
-      // Parse content (without username prefix)
-      const parsed = parseMessage(req.body.content);
-      console.log('Parsed sessions:', parsed.sessions);
+      if (!content) {
+        return res.status(400).json({ 
+          error: 'Content ili message parametar je obavezan' 
+        });
+      }
+      
+      // Parse content (without username prefix since we have author)
+      const parsed = parseMessage(content);
       sessions = parsed.sessions;
     }
-    // OLD FORMAT: { message: "Name:\nGame 1\n30m" }
+    // No author provided - try to parse username from message
     else {
       const message = req.body.message || req.body.text || req.body;
       const messageText = typeof message === 'string' ? message : JSON.stringify(message);

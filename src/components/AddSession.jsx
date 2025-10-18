@@ -240,15 +240,16 @@ export default function AddSession({ userId, onSessionAdded, users }) {
         <div className="space-y-3">
           <div>
             <p className="text-xs font-semibold text-blue-900 mb-2">📋 Format Zahtjeva (JSON)</p>
-            <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto">
+            <code className="block bg-white px-3 py-2 rounded text-xs border border-blue-200 overflow-x-auto mb-2">
               {'{\n  "author": "Ime",\n  "content": "Game 1\\n30m\\nGame 2\\n25m"\n}'}
             </code>
+            <p className="text-xs text-blue-500 mb-2">ili koristite <code className="bg-white px-1 border border-blue-200">"message"</code> umjesto <code className="bg-white px-1 border border-blue-200">"content"</code></p>
             <div className="mt-2 space-y-1">
               <p className="text-xs text-blue-600">
                 ✅ <strong>author</strong> - Korisničko ime (obavezno)
               </p>
               <p className="text-xs text-blue-600">
-                ✅ <strong>content</strong> - Parovi: naziv lekcije + trajanje
+                ✅ <strong>content</strong> ili <strong>message</strong> - Parovi: naziv lekcije + trajanje
               </p>
               <p className="text-xs text-blue-700 mt-2">
                 💡 Korisnik se automatski kreira ako ne postoji
