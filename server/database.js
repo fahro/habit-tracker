@@ -116,6 +116,14 @@ export function updateUser(dailyGoalMinutes, userId = 1) {
   updateUserSettings(userId, dailyGoalMinutes);
 }
 
+export function updateUserCreatedAt(userId, createdAt) {
+  db.prepare(`
+    UPDATE users 
+    SET created_at = ? 
+    WHERE id = ?
+  `).run(createdAt, userId);
+}
+
 export function addSession(userId, lessonName, durationSeconds, date) {
   const result = db.prepare(`
     INSERT INTO sessions (user_id, lesson_name, duration_seconds, date)

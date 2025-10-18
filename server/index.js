@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings } from './database.js';
+import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings, updateUserCreatedAt } from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -191,6 +191,24 @@ app.delete('/api/users/:userId', (req, res) => {
   
   deleteUser(userId);
   res.json({ success: true, message: 'Korisnik uspješno obrisan' });
+});
+
+// Update user created_at date (for backdating user creation)
+app.patch('/api/users/:userId/created-at', (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const { createdAt } = req.body;
+  
+  if (!createdAt) {
+    return res.status(400).json({ error: 'createdAt is required' });
+  }
+  
+  const user = getUserById(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  updateUserCreatedAt(userId, createdAt);
+  res.json({ success: true, message: 'User created_at updated successfully' });
 });
 
 // Legacy endpoints for backward compatibility
