@@ -108,10 +108,15 @@ export function getUserByName(name) {
 
 export function createUser(name, displayName = null, dailyGoalMinutes = 30) {
   try {
+    // Set created_at to yesterday so new users can see yesterday in monthly overview
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const createdAt = yesterday.toISOString();
+    
     const result = db.prepare(`
-      INSERT INTO users (name, display_name, daily_goal_minutes)
-      VALUES (?, ?, ?)
-    `).run(name, displayName || name, dailyGoalMinutes);
+      INSERT INTO users (name, display_name, daily_goal_minutes, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run(name, displayName || name, dailyGoalMinutes, createdAt);
     return result.lastInsertRowid;
   } catch (error) {
     // User already exists, return existing user
