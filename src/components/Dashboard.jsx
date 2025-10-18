@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar, X, BookOpen, Edit2, Trash2, Save } from 'lucide-react'
+import { TrendingUp, Clock, Award, AlertCircle, Target, Flame, CheckCircle, XCircle, MinusCircle, ChevronLeft, ChevronRight, Calendar, X, BookOpen, Edit2, Trash2, Save, Plus } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 
-export default function Dashboard({ stats, dailyStats, user }) {
+export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [monthlyGoal, setMonthlyGoal] = useState(30)
@@ -12,6 +12,8 @@ export default function Dashboard({ stats, dailyStats, user }) {
   const [editingSessionId, setEditingSessionId] = useState(null)
   const [editFormData, setEditFormData] = useState({ lessonName: '', minutes: 0, seconds: 0 })
   const [monthlyDailyStats, setMonthlyDailyStats] = useState(null)
+  const [batchMessage, setBatchMessage] = useState('')
+  const [addingBatch, setAddingBatch] = useState(false)
   
   // Fetch monthly data when month/year changes
   useEffect(() => {
@@ -50,9 +52,10 @@ export default function Dashboard({ stats, dailyStats, user }) {
     setSelectedDate(null)
     setDaySessions([])
     setEditingSessionId(null)
+    setBatchMessage('')
   }
   
-  // Check if date is editable (today or yesterday)
+  // Check if date is editable (today or yesterday only)
   const isEditableDate = (date) => {
     const today = new Date().toISOString().split('T')[0]
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
@@ -94,8 +97,8 @@ export default function Dashboard({ stats, dailyStats, user }) {
       if (res.ok) {
         setEditingSessionId(null)
         await fetchDaySessions(selectedDate)
-        // Trigger parent refresh
-        window.location.reload()
+        // Trigger parent refresh without losing state
+        if (onDataRefresh) onDataRefresh()
       } else {
         const data = await res.json()
         alert(data.error || 'Greška pri ažuriranju sesije')
@@ -119,8 +122,8 @@ export default function Dashboard({ stats, dailyStats, user }) {
       
       if (res.ok) {
         await fetchDaySessions(selectedDate)
-        // Trigger parent refresh
-        window.location.reload()
+        // Trigger parent refresh without losing state
+        if (onDataRefresh) onDataRefresh()
       } else {
         const data = await res.json()
         alert(data.error || 'Greška pri brisanju sesije')
@@ -128,6 +131,48 @@ export default function Dashboard({ stats, dailyStats, user }) {
     } catch (error) {
       console.error('Error deleting session:', error)
       alert('Greška pri brisanju sesije')
+    }
+  }
+
+  // Add batch sessions
+  const handleBatchSubmit = async (e) => {
+    e.preventDefault()
+    setAddingBatch(true)
+    
+    if (!batchMessage.trim()) {
+      alert('Molimo unesite sesije')
+      setAddingBatch(false)
+      return
+    }
+    
+    try {
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: batchMessage,
+          userId: user.id,
+          date: selectedDate
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setBatchMessage('')
+        await fetchDaySessions(selectedDate)
+        // Trigger parent refresh without losing state
+        if (onDataRefresh) onDataRefresh()
+      } else {
+        alert(data.error || 'Greška pri dodavanju sesija')
+      }
+    } catch (error) {
+      console.error('Error adding batch sessions:', error)
+      alert('Greška pri dodavanju sesija')
+    } finally {
+      setAddingBatch(false)
     }
   }
   
@@ -395,13 +440,15 @@ export default function Dashboard({ stats, dailyStats, user }) {
             const date = new Date(day.date)
             const isToday = day.date === new Date().toISOString().split('T')[0]
             
+            const canInteract = day.sessionCount > 0 || isEditableDate(day.date)
+            
             return (
               <div
                 key={day.date}
-                onClick={() => day.sessionCount > 0 && fetchDaySessions(day.date)}
+                onClick={() => canInteract && fetchDaySessions(day.date)}
                 className={`flex items-center justify-between p-4 rounded-xl border transition-all transform ${
                   isToday ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 shadow-glow-sm' : 'bg-white/50 border-white/30 hover:bg-white/80 hover:shadow-md'
-                } ${day.sessionCount > 0 ? 'cursor-pointer hover:scale-102' : ''}`}
+                } ${canInteract ? 'cursor-pointer hover:scale-102' : ''}`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${
@@ -488,12 +535,20 @@ export default function Dashboard({ stats, dailyStats, user }) {
                   <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
                   <p className="text-muted-foreground">Učitavanje...</p>
                 </div>
-              ) : daySessions.length === 0 ? (
-                <div className="text-center py-12">
-                  <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">Nema sesija za ovaj dan</p>
-                </div>
               ) : (
+                <div className="space-y-6">
+                  {daySessions.length === 0 && isEditableDate(selectedDate) ? (
+                    <div className="text-center py-8 glass-card rounded-2xl border-2 border-orange-300">
+                      <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-500" />
+                      <h4 className="text-lg font-bold text-gray-800 mb-2">Nema unesenih sesija!</h4>
+                      <p className="text-gray-600 mb-4">Dodaj sesije za ovaj dan ispod</p>
+                    </div>
+                  ) : daySessions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">Nema sesija za ovaj dan</p>
+                    </div>
+                  ) : (
                 <div className="space-y-3">
                   {daySessions.map((session, index) => {
                     const minutes = Math.floor(session.duration_seconds / 60)
@@ -622,22 +677,68 @@ export default function Dashboard({ stats, dailyStats, user }) {
                   })}
                   
                   {/* Total Summary */}
-                  <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Ukupno vrijeme</p>
-                        <p className="text-2xl font-bold text-primary">
-                          {formatTime(daySessions.reduce((sum, s) => sum + s.duration_seconds, 0))}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Ukupno sesija</p>
-                        <p className="text-2xl font-bold">
-                          {daySessions.length}
-                        </p>
+                  {daySessions.length > 0 && (
+                    <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Ukupno vrijeme</p>
+                          <p className="text-2xl font-bold text-primary">
+                            {formatTime(daySessions.reduce((sum, s) => sum + s.duration_seconds, 0))}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Ukupno sesija</p>
+                          <p className="text-2xl font-bold">
+                            {daySessions.length}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                </div>
+                  )}
+                  
+                  {/* Batch Add Sessions Form - Only for today/yesterday */}
+                  {isEditableDate(selectedDate) && (
+                    <div className="glass-card rounded-2xl p-6 border-2 border-purple-300">
+                      <h4 className="text-lg font-bold mb-4 flex items-center">
+                        <div className="p-2 bg-gradient-primary rounded-lg mr-3">
+                          <Plus className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                          Dodaj Sesije
+                        </span>
+                      </h4>
+                      <form onSubmit={handleBatchSubmit} className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-semibold mb-2 text-gray-700">
+                            Unesi sesije (jedna po liniji ili inline)
+                          </label>
+                          <textarea
+                            value={batchMessage}
+                            onChange={(e) => setBatchMessage(e.target.value)}
+                            placeholder="Game 1. Test\n30m 15s\nGame 2. Test 2\n45m"
+                            rows={6}
+                            className="w-full px-4 py-3 border border-white/30 bg-white/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all font-mono text-sm"
+                          />
+                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs font-semibold text-blue-900 mb-1">📝 Primjeri:</p>
+                            <div className="text-xs text-blue-700 space-y-1 font-mono">
+                              <p>✓ Lekcija 1<br/>&nbsp;&nbsp;30m</p>
+                              <p>✓ Lekcija 2 45m 30s</p>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={addingBatch}
+                          className="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold hover:shadow-glow transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                        >
+                          {addingBatch ? 'Dodavanje...' : 'Dodaj Sesije'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

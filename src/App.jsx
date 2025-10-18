@@ -218,7 +218,7 @@ function App() {
         ) : (
           <>
             {activeTab === 'dashboard' && (
-              <Dashboard stats={stats} dailyStats={dailyStats} user={selectedUser} />
+              <Dashboard stats={stats} dailyStats={dailyStats} user={selectedUser} onDataRefresh={handleSessionAdded} />
             )}
             {activeTab === 'add' && (
               <AddSession userId={selectedUserId} onSessionAdded={handleSessionAdded} users={users} />
