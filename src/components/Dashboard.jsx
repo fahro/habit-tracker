@@ -80,6 +80,28 @@ export default function Dashboard({ stats, dailyStats, user }) {
     </div>
   )
 
+  // Custom tick component for colored day numbers
+  const CustomXAxisTick = ({ x, y, payload }) => {
+    const dayData = chartData.find(d => d.date === payload.value)
+    const color = dayData?.metGoal ? '#16a34a' : dayData?.minutes > 0 ? '#ea580c' : '#dc2626'
+    
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text 
+          x={0} 
+          y={0} 
+          dy={16} 
+          textAnchor="middle" 
+          fill={color}
+          fontSize="12"
+          fontWeight="600"
+        >
+          {payload.value}
+        </text>
+      </g>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Overview Stats */}
@@ -121,8 +143,16 @@ export default function Dashboard({ stats, dailyStats, user }) {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="date" stroke="#6b7280" />
-            <YAxis stroke="#6b7280" label={{ value: 'Minuta', angle: -90, position: 'insideLeft' }} />
+            <XAxis 
+              dataKey="date" 
+              tick={<CustomXAxisTick />}
+              stroke="#e5e7eb"
+            />
+            <YAxis 
+              stroke="#6b7280" 
+              label={{ value: 'Minuta', angle: -90, position: 'insideLeft' }}
+              domain={[0, 'auto']}
+            />
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: 'white', 
@@ -132,9 +162,10 @@ export default function Dashboard({ stats, dailyStats, user }) {
               formatter={(value) => [`${value} min`, 'Vrijeme']}
             />
             <Bar dataKey="minutes" radius={[8, 8, 0, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.metGoal ? '#16a34a' : '#ea580c'} />
-              ))}
+              {chartData.map((entry, index) => {
+                const color = entry.metGoal ? '#16a34a' : entry.minutes > 0 ? '#ea580c' : '#dc2626'
+                return <Cell key={`cell-${index}`} fill={color} />
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -145,7 +176,11 @@ export default function Dashboard({ stats, dailyStats, user }) {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-orange-600"></div>
-            <span>Ispod cilja</span>
+            <span>Djelimično</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-red-600"></div>
+            <span>Propušten (0m)</span>
           </div>
         </div>
       </div>
