@@ -6,9 +6,41 @@ import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Basic Authentication Middleware
+const AUTH_USERNAME = process.env.AUTH_USERNAME || 'atomic';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'habits2024';
+
+function basicAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Atomic Habits Tracker"');
+    return res.status(401).send('Authentication required');
+  }
+  
+  const base64Credentials = authHeader.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+  const [username, password] = credentials.split(':');
+  
+  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+    return next();
+  }
+  
+  res.setHeader('WWW-Authenticate', 'Basic realm="Atomic Habits Tracker"');
+  return res.status(401).send('Invalid credentials');
+}
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.text());
+
+// Apply basic auth to all routes except health check
+app.use((req, res, next) => {
+  if (req.path === '/api/health') {
+    return next();
+  }
+  basicAuth(req, res, next);
+});
 
 // Initialize database
 initDatabase();
@@ -516,6 +548,12 @@ app.get('/api/settings/monthly', (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve robots.txt to prevent search engine indexing
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nDisallow: /\n\n# Prevent all search engines from indexing this site\n# This application contains private information');
 });
 
 // Serve static files in production

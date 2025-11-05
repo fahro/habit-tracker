@@ -4,6 +4,8 @@ Aplikacija za praćenje dnevnog učenja sa automatskom integracijom Viber/WhatsA
 
 ## ✨ Funkcionalnosti
 
+- **🔒 Zaštićena Aplikacija** - HTTP Basic Authentication za zaštitu privatnih podataka
+- **🚫 Google Indexing Prevention** - Potpuna zaštita od indeksiranja pretraživačima
 - **👥 Multi-User Podrška** - Više korisnika sa automatskim prepoznavanjem iz poruka
 - **📊 Dashboard** - Pregled svih statistika, grafikon aktivnosti, trenutni niz
 - **✅ Praćenje Sesija** - Unos pojedinačnih ili više sesija odjednom
@@ -92,6 +94,54 @@ npm run dev
 Aplikacija će biti dostupna na:
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:3001
+
+## 🔒 Sigurnost i Privatnost
+
+Aplikacija je zaštićena **HTTP Basic Authentication** sistemom za sprečavanje neovlaštenog pristupa i Google indeksiranja.
+
+### Konfiguracija Autentifikacije
+
+**Default pristupni podaci:**
+- **Username:** `atomic`
+- **Password:** `habits2024`
+
+**⚠️ VAŽNO:** Promijenite default lozinku prije produkcijskog deploya!
+
+**Postavljanje prilagođene lozinke:**
+
+1. Kreirajte `.env` fajl:
+```bash
+cp .env.example .env
+```
+
+2. Uredite `.env` i postavite svoje pristupne podatke:
+```bash
+AUTH_USERNAME=vase_korisnicko_ime
+AUTH_PASSWORD=vasa_jaka_lozinka
+```
+
+3. Restartujte server:
+```bash
+# Docker
+docker-compose restart
+
+# Lokalno
+npm run dev
+```
+
+### Kako funkcioniše zaštita?
+
+1. **HTTP Basic Auth** - Svaki pristup aplikaciji zahtijeva korisničko ime i lozinku
+2. **robots.txt** - Blokira sve pretraživače od indeksiranja
+3. **Meta Tags** - HTML meta tagovi dodatno sprečavaju indeksiranje:
+   - `noindex` - Ne indeksiraj stranicu
+   - `nofollow` - Ne prati linkove
+   - `noarchive` - Ne arhiviraj stranicu
+   - `nosnippet` - Ne prikazuj snippet u rezultatima
+
+### Pristup aplikaciji
+
+Kada prvi put pristupite aplikaciji, browser će zatražiti korisničko ime i lozinku. Browser će zapamtiti ove podatke dok se ne odjavite ili obrišete cookies.
 
 ## 📱 Format Poruka
 
@@ -202,6 +252,8 @@ Dashboard sadrži **dropdown za izbor korisnika** - lako prebacivanje između ra
 
 ## 🚂 Production Deployment
 
+**⚠️ PRIJE DEPLOYA:** Postavite sigurne pristupne podatke u `.env` fajlu ili environment variables!
+
 ### Opcija 1: Docker na bilo kom serveru
 
 **Preduvjeti:**
@@ -211,6 +263,12 @@ Dashboard sadrži **dropdown za izbor korisnika** - lako prebacivanje između ra
 # Na serveru
 git clone <your-repo>
 cd atomic-habits
+
+# Kreirajte .env sa sigurnim podacima
+nano .env
+# Dodajte:
+# AUTH_USERNAME=vase_ime
+# AUTH_PASSWORD=vasa_jaka_lozinka
 
 # Pokreni sa Docker Compose
 docker-compose up -d
@@ -240,7 +298,15 @@ git push
 
 Railway će automatski koristiti Dockerfile za build.
 
-**Korak 3: Dobijte Webhook URL**
+**Korak 3: Postavite Environment Variables**
+
+1. U Railway projektu, idite na **"Variables"** tab
+2. Dodajte sigurne pristupne podatke:
+   - `AUTH_USERNAME` = vaše korisničko ime
+   - `AUTH_PASSWORD` = vaša jaka lozinka
+3. Deploy će se automatski restartovati sa novim podacima
+
+**Korak 4: Dobijte Webhook URL**
 
 Nakon deploya, Railway će vam dati URL, npr: `https://your-app.railway.app`
 
