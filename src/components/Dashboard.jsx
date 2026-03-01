@@ -24,9 +24,13 @@ export default function Dashboard({ stats, dailyStats, user, onDataRefresh }) {
     const lastDay = new Date(selectedYear, selectedMonth + 1, 0)
     const daysInMonth = lastDay.getDate()
     
+    // Calculate days back from today to start of selected month, so old months are fully covered
+    const today = new Date()
+    const daysBack = Math.ceil((today - firstDay) / (1000 * 60 * 60 * 24)) + daysInMonth + 1
+
     Promise.all([
       fetch(`/api/settings/monthly/${selectedYear}/${selectedMonth + 1}`).then(res => res.json()),
-      fetch(`/api/stats/daily?days=${daysInMonth + 30}&userId=${user.id}`).then(res => res.json())
+      fetch(`/api/stats/daily?days=${daysBack}&userId=${user.id}`).then(res => res.json())
     ]).then(([goalData, statsData]) => {
       setMonthlyGoal(goalData.dailyGoalMinutes)
       setMonthlyDailyStats(statsData)
