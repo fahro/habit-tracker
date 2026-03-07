@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Check } from 'lucide-react'
 
 const PRESET_COLORS = [
@@ -14,8 +14,6 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
   const [penaltyDays, setPenaltyDays] = useState('2')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const scrollRef = useRef(null)
-  const nameRef = useRef(null)
 
   useEffect(() => {
     if (habit) {
@@ -24,11 +22,6 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
       setDailyMin(habit.daily_min_minutes?.toString() || '30')
       setPenaltyDays((habit.penalty_days || 2).toString())
     }
-    // Scroll to top so name input is visible, then focus it
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: 0 })
-      nameRef.current?.focus()
-    }, 50)
   }, [habit])
 
   const handleBackdrop = (e) => {
@@ -77,32 +70,36 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
       <div className="modal-sheet">
         <div className="modal-handle" />
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0">
-          <h3 className="font-bold text-slate-900 text-lg">
-            {habit ? 'Edit Habit' : 'New Habit'}
-          </h3>
-          <button onClick={onClose} className="btn btn-secondary btn-icon">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Fixed header — always visible, never scrolls away */}
+        <div className="flex-shrink-0 px-5 pt-2 pb-4 border-b border-slate-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-slate-900 text-lg">
+              {habit ? 'Edit Habit' : 'New Habit'}
+            </h3>
+            <button onClick={onClose} className="btn btn-secondary btn-icon">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        <div ref={scrollRef} className="modal-scroll px-5 pb-8 space-y-6">
-          {/* Name — FIRST so it's visible on open */}
+          {/* Name input — pinned above the scroll area, always visible */}
           <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">
               Habit Name
             </label>
             <input
-              ref={nameRef}
               type="text"
               className="input text-base"
               value={name}
               onChange={e => { setName(e.target.value); setError('') }}
               placeholder="e.g. Reading, Guitar, Exercise..."
+              autoFocus
             />
+            {error && <p className="text-sm text-danger font-medium mt-2">{error}</p>}
           </div>
+        </div>
 
+        {/* Scrollable settings below */}
+        <div className="modal-scroll px-5 py-5 space-y-6">
           {/* Color */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 block">
@@ -168,7 +165,7 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
           {/* Penalty days */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-              Penalty After How Many Missed Days in a Row
+              Penalty After Missed Days in a Row
             </label>
             <div className="flex gap-2">
               {[2, 3, 4, 5, 7].map(v => (
@@ -187,34 +184,25 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
               ))}
             </div>
             <p className="text-xs text-slate-400 mt-2">
-              A penalty is recorded if you miss the daily minimum {penaltyDays || 2} days in a row.
+              A penalty is recorded after missing {penaltyDays || 2} days in a row.
             </p>
           </div>
 
           {/* Preview */}
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-              Preview
-            </label>
-            <div className="card overflow-hidden">
-              <div className="flex items-stretch">
-                <div className="w-1.5" style={{ background: color }} />
-                <div className="p-4 flex-1">
-                  <div className="font-semibold text-slate-900">{name || 'Habit Name'}</div>
-                  <div className="text-sm text-slate-500 mt-0.5">
-                    Min {dailyMin || 0} min/day · penalty after {penaltyDays || 2} missed days
-                  </div>
-                  <div className="progress-bar mt-3">
-                    <div className="progress-fill w-0" style={{ background: color }} />
-                  </div>
+          <div className="card overflow-hidden">
+            <div className="flex items-stretch">
+              <div className="w-1.5" style={{ background: color }} />
+              <div className="p-4 flex-1">
+                <div className="font-semibold text-slate-900">{name || 'Habit Name'}</div>
+                <div className="text-sm text-slate-500 mt-0.5">
+                  Min {dailyMin || 0} min/day · penalty after {penaltyDays || 2} missed days
+                </div>
+                <div className="progress-bar mt-3">
+                  <div className="progress-fill w-0" style={{ background: color }} />
                 </div>
               </div>
             </div>
           </div>
-
-          {error && (
-            <p className="text-sm text-danger font-medium text-center">{error}</p>
-          )}
 
           <button
             onClick={handleSave}
