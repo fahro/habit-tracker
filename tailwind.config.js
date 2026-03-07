@@ -7,51 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: '#e5e7eb',
         primary: {
-          DEFAULT: '#3b82f6',
-          dark: '#1d4ed8',
-          light: '#60a5fa',
-          foreground: '#ffffff',
+          DEFAULT: '#6366f1',
+          dark: '#4f46e5',
+          light: '#818cf8',
         },
-        secondary: {
-          DEFAULT: '#f3f4f6',
-          foreground: '#111827',
-        },
-        success: {
-          DEFAULT: '#10b981',
-          dark: '#059669',
-          foreground: '#ffffff',
-        },
-        warning: {
-          DEFAULT: '#f59e0b',
-          dark: '#d97706',
-          foreground: '#ffffff',
-        },
-        destructive: {
-          DEFAULT: '#ef4444',
-          dark: '#dc2626',
-          foreground: '#ffffff',
-        },
-        muted: {
-          DEFAULT: '#f9fafb',
-          foreground: '#6b7280',
-        },
-        background: '#fafbfc',
-        foreground: '#111827',
+        success: '#22c55e',
+        warning: '#f59e0b',
+        danger: '#ef4444',
+        surface: '#ffffff',
+        background: '#f1f5f9',
       },
       boxShadow: {
-        'soft': '0 2px 8px rgba(0, 0, 0, 0.04)',
-        'card': '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.15)',
-        'input': '0 0 0 3px rgba(59, 130, 246, 0.1)',
+        card: '0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)',
+        'card-lg': '0 4px 16px rgba(0,0,0,0.10)',
+        modal: '0 20px 60px rgba(0,0,0,0.18)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
-        'xl': '0.75rem',
         '2xl': '1rem',
+        '3xl': '1.5rem',
+        '4xl': '2rem',
+      },
+      spacing: {
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-top': 'env(safe-area-inset-top)',
       },
     },
   },

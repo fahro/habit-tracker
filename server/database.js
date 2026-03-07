@@ -6,267 +6,351 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Use data directory for persistence (Docker volume)
-const dataDir = process.env.NODE_ENV === 'production' 
+const dataDir = process.env.NODE_ENV === 'production'
   ? path.join(__dirname, '../data')
   : __dirname;
 
-// Create data directory if it doesn't exist with proper error handling
 try {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true, mode: 0o755 });
-    console.log(`📁 Created data directory: ${dataDir}`);
   }
-  
-  // Verify directory is writable
   fs.accessSync(dataDir, fs.constants.W_OK);
-  console.log(`✅ Data directory is writable: ${dataDir}`);
+  console.log(`Data directory: ${dataDir}`);
 } catch (error) {
-  console.error(`❌ Error with data directory:`, error);
-  console.log(`Falling back to /tmp/data`);
+  console.error('Data directory error:', error);
   const tmpDir = '/tmp/data';
   if (!fs.existsSync(tmpDir)) {
     fs.mkdirSync(tmpDir, { recursive: true, mode: 0o755 });
   }
 }
 
-const dbPath = path.join(dataDir, 'study-tracker.db');
-console.log(`📁 Database location: ${dbPath}`);
-
+const dbPath = path.join(dataDir, 'habits.db');
 let db;
 try {
   db = new Database(dbPath);
-  console.log(`✅ Database opened successfully`);
 } catch (error) {
-  console.error(`❌ Failed to open database at ${dbPath}:`, error);
-  // Fallback to temp directory
-  const fallbackPath = '/tmp/data/study-tracker.db';
-  console.log(`Trying fallback location: ${fallbackPath}`);
-  db = new Database(fallbackPath);
+  db = new Database('/tmp/data/habits.db');
 }
 
 export function initDatabase() {
-  // Create users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       display_name TEXT,
-      daily_goal_minutes INTEGER DEFAULT 30,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Create sessions table
   db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
+    CREATE TABLE IF NOT EXISTS habits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
-      lesson_name TEXT NOT NULL,
-      duration_seconds INTEGER NOT NULL,
-      date TEXT NOT NULL,
+      name TEXT NOT NULL,
+      color TEXT DEFAULT '#6366f1',
+      daily_min_minutes INTEGER DEFAULT 30,
+      is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
-  // Create global monthly settings table
   db.exec(`
-    CREATE TABLE IF NOT EXISTS monthly_settings (
+    CREATE TABLE IF NOT EXISTS activity_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      year INTEGER NOT NULL,
-      month INTEGER NOT NULL,
-      daily_goal_minutes INTEGER NOT NULL DEFAULT 30,
+      habit_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL,
+      notes TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(year, month)
+      FOREIGN KEY (habit_id) REFERENCES habits(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
-  // Create indexes
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON sessions(user_id, date);
-    CREATE INDEX IF NOT EXISTS idx_sessions_date ON sessions(date);
+    CREATE INDEX IF NOT EXISTS idx_logs_habit_date ON activity_logs(habit_id, date);
+    CREATE INDEX IF NOT EXISTS idx_logs_user_date ON activity_logs(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id);
   `);
 
-  // No default user needed - users are created on-demand
-
-  console.log('✅ Database initialized');
+  console.log('Database initialized');
 }
 
-// Multi-user functions
+// ---- Users ----
+
 export function getAllUsers() {
   return db.prepare('SELECT * FROM users ORDER BY created_at ASC').all();
 }
 
-export function getUserById(userId) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+export function getUserById(id) {
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
 export function getUserByName(name) {
   return db.prepare('SELECT * FROM users WHERE name = ?').get(name);
 }
 
-export function createUser(name, displayName = null, dailyGoalMinutes = 30) {
+export function createUser(name, displayName = null) {
   try {
-    // Set created_at to yesterday so new users can see yesterday in monthly overview
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const createdAt = yesterday.toISOString();
-    
-    const result = db.prepare(`
-      INSERT INTO users (name, display_name, daily_goal_minutes, created_at)
-      VALUES (?, ?, ?, ?)
-    `).run(name, displayName || name, dailyGoalMinutes, createdAt);
+    const result = db.prepare(
+      'INSERT INTO users (name, display_name) VALUES (?, ?)'
+    ).run(name, displayName || name);
     return result.lastInsertRowid;
-  } catch (error) {
-    // User already exists, return existing user
+  } catch {
     const existing = getUserByName(name);
     return existing ? existing.id : null;
   }
 }
 
-export function updateUserSettings(userId, dailyGoalMinutes) {
-  db.prepare('UPDATE users SET daily_goal_minutes = ? WHERE id = ?').run(dailyGoalMinutes, userId);
+export function updateUserDisplayName(id, displayName) {
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, id);
 }
 
-export function updateUserDisplayName(userId, displayName) {
-  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, userId);
+export function deleteUser(id) {
+  const habits = db.prepare('SELECT id FROM habits WHERE user_id = ?').all(id);
+  for (const h of habits) {
+    db.prepare('DELETE FROM activity_logs WHERE habit_id = ?').run(h.id);
+  }
+  db.prepare('DELETE FROM habits WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
-export function deleteUser(userId) {
-  // Delete all sessions for this user first
-  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
-  // Then delete the user
-  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+// ---- Habits ----
+
+export function getHabitsByUser(userId, includeInactive = false) {
+  const query = includeInactive
+    ? 'SELECT * FROM habits WHERE user_id = ? ORDER BY created_at ASC'
+    : 'SELECT * FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at ASC';
+  return db.prepare(query).all(userId);
 }
 
-// Legacy function for backward compatibility
-export function getUser(userId = 1) {
-  return getUserById(userId);
+export function getHabitById(id) {
+  return db.prepare('SELECT * FROM habits WHERE id = ?').get(id);
 }
 
-export function updateUser(dailyGoalMinutes, userId = 1) {
-  updateUserSettings(userId, dailyGoalMinutes);
-}
-
-export function updateUserCreatedAt(userId, createdAt) {
-  db.prepare(`
-    UPDATE users 
-    SET created_at = ? 
-    WHERE id = ?
-  `).run(createdAt, userId);
-}
-
-export function addSession(userId, lessonName, durationSeconds, date) {
-  const result = db.prepare(`
-    INSERT INTO sessions (user_id, lesson_name, duration_seconds, date)
-    VALUES (?, ?, ?, ?)
-  `).run(userId, lessonName, durationSeconds, date);
+export function createHabit(userId, name, color, dailyMinMinutes) {
+  const result = db.prepare(
+    'INSERT INTO habits (user_id, name, color, daily_min_minutes) VALUES (?, ?, ?, ?)'
+  ).run(userId, name, color || '#6366f1', dailyMinMinutes || 30);
   return result.lastInsertRowid;
 }
 
-export function getSessions(userId, startDate, endDate) {
-  let query = 'SELECT * FROM sessions WHERE user_id = ?';
-  const params = [userId];
-  
-  if (startDate) {
-    query += ' AND date >= ?';
-    params.push(startDate);
-  }
-  
-  if (endDate) {
-    query += ' AND date <= ?';
-    params.push(endDate);
-  }
-  
-  query += ' ORDER BY date DESC, created_at DESC';
-  
-  return db.prepare(query).all(...params);
+export function updateHabit(id, name, color, dailyMinMinutes, isActive) {
+  db.prepare(
+    'UPDATE habits SET name = ?, color = ?, daily_min_minutes = ?, is_active = ? WHERE id = ?'
+  ).run(name, color, dailyMinMinutes, isActive ? 1 : 0, id);
 }
 
-export function getSessionById(sessionId) {
-  return db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+export function deleteHabit(id) {
+  db.prepare('DELETE FROM activity_logs WHERE habit_id = ?').run(id);
+  db.prepare('DELETE FROM habits WHERE id = ?').run(id);
 }
 
-export function updateSession(sessionId, lessonName, durationSeconds, date) {
-  db.prepare(`
-    UPDATE sessions 
-    SET lesson_name = ?, duration_seconds = ?, date = ?
-    WHERE id = ?
-  `).run(lessonName, durationSeconds, date, sessionId);
+// ---- Activity Logs ----
+
+export function addActivityLog(habitId, userId, date, durationMinutes, notes = null) {
+  const result = db.prepare(
+    'INSERT INTO activity_logs (habit_id, user_id, date, duration_minutes, notes) VALUES (?, ?, ?, ?, ?)'
+  ).run(habitId, userId, date, durationMinutes, notes);
+  return result.lastInsertRowid;
 }
 
-export function deleteSession(sessionId) {
-  db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
+export function getActivityLogById(id) {
+  return db.prepare('SELECT * FROM activity_logs WHERE id = ?').get(id);
 }
 
-export function getDailyStats(userId, numDays = 30) {
-  const user = getUserById(userId);
-  if (!user) return { stats: [], totalPenalties: 0 };
-  
-  // Get date range
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - numDays);
-  
-  // Don't go before user creation date
-  let userCreatedDate = user.created_at ? new Date(user.created_at) : startDate;
-  // Set to start of day (midnight) to include the full creation day
-  userCreatedDate.setHours(0, 0, 0, 0);
-  
-  const effectiveStartDate = startDate > userCreatedDate ? startDate : userCreatedDate;
-  
-  const startDateStr = effectiveStartDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
-  
-  // Get daily totals
+export function getActivityLogsByHabitAndDate(habitId, date) {
+  return db.prepare(
+    'SELECT * FROM activity_logs WHERE habit_id = ? AND date = ? ORDER BY created_at ASC'
+  ).all(habitId, date);
+}
+
+export function getActivityLogsByUserAndDate(userId, date) {
+  return db.prepare(
+    'SELECT al.*, h.name as habit_name, h.color as habit_color FROM activity_logs al JOIN habits h ON al.habit_id = h.id WHERE al.user_id = ? AND al.date = ? ORDER BY h.name, al.created_at ASC'
+  ).all(userId, date);
+}
+
+export function updateActivityLog(id, durationMinutes, notes) {
+  db.prepare(
+    'UPDATE activity_logs SET duration_minutes = ?, notes = ? WHERE id = ?'
+  ).run(durationMinutes, notes, id);
+}
+
+export function deleteActivityLog(id) {
+  db.prepare('DELETE FROM activity_logs WHERE id = ?').run(id);
+}
+
+// ---- Stats ----
+
+export function getUserTodayStats(userId) {
+  const today = new Date().toISOString().split('T')[0];
+  const habits = getHabitsByUser(userId);
+
+  return habits.map(habit => {
+    const row = db.prepare(`
+      SELECT SUM(duration_minutes) as total_minutes, COUNT(*) as log_count
+      FROM activity_logs WHERE habit_id = ? AND date = ?
+    `).get(habit.id, today);
+
+    const totalMinutes = row.total_minutes || 0;
+    const metGoal = totalMinutes >= habit.daily_min_minutes;
+    const progress = habit.daily_min_minutes > 0
+      ? Math.min(100, Math.round((totalMinutes / habit.daily_min_minutes) * 100))
+      : 100;
+
+    const streakStats = computeHabitStreak(habit.id, habit.daily_min_minutes);
+
+    return {
+      habit,
+      today: { totalMinutes, logCount: row.log_count || 0, metGoal, progress },
+      streak: streakStats.current
+    };
+  });
+}
+
+function computeHabitStreak(habitId, minGoal) {
   const dailyTotals = db.prepare(`
-    SELECT 
-      date,
-      COUNT(*) as session_count,
-      SUM(duration_seconds) as total_seconds
-    FROM sessions
-    WHERE user_id = ? AND date >= ? AND date <= ?
-    GROUP BY date
-    ORDER BY date DESC
-  `).all(userId, startDateStr, endDateStr);
-  
-  // Create a map of all dates in range
-  const stats = [];
+    SELECT date, SUM(duration_minutes) as total_minutes
+    FROM activity_logs WHERE habit_id = ?
+    GROUP BY date ORDER BY date DESC
+  `).all(habitId);
+
+  const today = new Date().toISOString().split('T')[0];
+  const checkDate = new Date();
+  let current = 0;
+
+  for (let i = 0; i <= dailyTotals.length + 1; i++) {
+    const dateStr = checkDate.toISOString().split('T')[0];
+    const dayData = dailyTotals.find(d => d.date === dateStr);
+
+    if (dayData && dayData.total_minutes >= minGoal) {
+      current++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else if (!dayData && dateStr === today) {
+      // Today not logged yet — don't break streak
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  // Longest streak
+  const sorted = [...dailyTotals].sort((a, b) => a.date.localeCompare(b.date));
+  let longest = 0;
+  let temp = 0;
+  for (const day of sorted) {
+    if (day.total_minutes >= minGoal) {
+      temp++;
+      longest = Math.max(longest, temp);
+    } else {
+      temp = 0;
+    }
+  }
+
+  return { current, longest };
+}
+
+export function getHabitDetailedStats(habitId) {
+  const habit = getHabitById(habitId);
+  if (!habit) return null;
+
+  const totals = db.prepare(`
+    SELECT COUNT(DISTINCT date) as days_active,
+           SUM(duration_minutes) as total_minutes,
+           COUNT(*) as total_logs
+    FROM activity_logs WHERE habit_id = ?
+  `).get(habitId);
+
+  const streaks = computeHabitStreak(habitId, habit.daily_min_minutes);
+
+  // Total penalties (all time)
+  const allDailyTotals = db.prepare(`
+    SELECT date, SUM(duration_minutes) as total_minutes
+    FROM activity_logs WHERE habit_id = ?
+    GROUP BY date ORDER BY date ASC
+  `).all(habitId);
+
+  // Build penalty count from the full history
+  const startDate = habit.created_at
+    ? new Date(habit.created_at).toISOString().split('T')[0]
+    : allDailyTotals[0]?.date;
+
+  let penalties = 0;
+  if (startDate) {
+    const end = new Date();
+    const start = new Date(startDate);
+    const dateMap = new Map(allDailyTotals.map(d => [d.date, d.total_minutes]));
+    let consec = 0;
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().split('T')[0];
+      const mins = dateMap.get(ds) || 0;
+      if (mins < habit.daily_min_minutes) {
+        consec++;
+        if (consec >= 2) penalties++;
+      } else {
+        consec = 0;
+      }
+    }
+  }
+
+  return {
+    daysActive: totals.days_active || 0,
+    totalMinutes: totals.total_minutes || 0,
+    totalLogs: totals.total_logs || 0,
+    currentStreak: streaks.current,
+    longestStreak: streaks.longest,
+    totalPenalties: penalties
+  };
+}
+
+export function getHabitDailyStats(habitId, numDays = 30) {
+  const habit = getHabitById(habitId);
+  if (!habit) return { stats: [], totalPenalties: 0 };
+
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - numDays + 1);
+  start.setHours(0, 0, 0, 0);
+
+  const startStr = start.toISOString().split('T')[0];
+  const endStr = end.toISOString().split('T')[0];
+
+  const dailyTotals = db.prepare(`
+    SELECT date, SUM(duration_minutes) as total_minutes, COUNT(*) as log_count
+    FROM activity_logs
+    WHERE habit_id = ? AND date >= ? AND date <= ?
+    GROUP BY date ORDER BY date DESC
+  `).all(habitId, startStr, endStr);
+
   const dateMap = new Map(dailyTotals.map(d => [d.date, d]));
-  
-  for (let d = new Date(endDate); d >= effectiveStartDate; d.setDate(d.getDate() - 1)) {
+  const stats = [];
+
+  for (let d = new Date(end); d >= start; d.setDate(d.getDate() - 1)) {
     const dateStr = d.toISOString().split('T')[0];
     const data = dateMap.get(dateStr);
-    
-    // Get monthly goal for this specific date
-    const year = d.getFullYear();
-    const month = d.getMonth(); // 0-11
-    const dailyGoalMinutes = getMonthlyGoal(year, month);
-    const dailyGoalSeconds = dailyGoalMinutes * 60;
-    
-    const totalSeconds = data ? data.total_seconds : 0;
-    const totalMinutes = Math.floor(totalSeconds / 60);
-    const metGoal = totalSeconds >= dailyGoalSeconds;
-    
+    const totalMinutes = data ? data.total_minutes : 0;
+    const metGoal = totalMinutes >= habit.daily_min_minutes;
+
     stats.push({
       date: dateStr,
-      sessionCount: data ? data.session_count : 0,
-      totalSeconds,
       totalMinutes,
+      logCount: data ? data.log_count : 0,
       metGoal,
-      status: totalSeconds === 0 ? 'none' : (metGoal ? 'success' : 'partial')
+      dailyMin: habit.daily_min_minutes,
+      status: totalMinutes === 0 ? 'none' : (metGoal ? 'success' : 'partial')
     });
   }
-  
-  // Calculate consecutive misses and penalties
+
+  // Mark penalty days (2+ consecutive misses)
   let consecutiveMisses = 0;
   let penalties = 0;
-  
-  // Reverse to go chronologically
+
   for (let i = stats.length - 1; i >= 0; i--) {
     const day = stats[i];
-    
     if (!day.metGoal) {
       consecutiveMisses++;
       if (consecutiveMisses >= 2) {
@@ -276,129 +360,58 @@ export function getDailyStats(userId, numDays = 30) {
     } else {
       consecutiveMisses = 0;
     }
-    
     day.consecutiveMisses = consecutiveMisses;
   }
-  
-  return {
-    stats: stats.reverse(), // Return in reverse chronological order
-    totalPenalties: penalties
-  };
+
+  return { stats: stats.reverse(), totalPenalties: penalties };
 }
 
-export function getOverallStats(userId) {
-  const user = getUserById(userId);
-  if (!user) return { totalSessions: 0, totalSeconds: 0, totalHours: 0, totalMinutes: 0, daysActive: 0, currentStreak: 0, longestStreak: 0, dailyGoalMinutes: 30 };
-  
-  // Get current month's goal for display
-  const now = new Date();
-  const currentMonthGoal = getMonthlyGoal(now.getFullYear(), now.getMonth());
-  
-  // Total sessions and time
-  const totals = db.prepare(`
-    SELECT 
-      COUNT(*) as total_sessions,
-      SUM(duration_seconds) as total_seconds,
-      COUNT(DISTINCT date) as days_active
-    FROM sessions
-    WHERE user_id = ?
-  `).get(userId);
-  
-  // Get daily stats for streak calculation
-  const allDailyStats = db.prepare(`
-    SELECT 
-      date,
-      SUM(duration_seconds) as total_seconds
-    FROM sessions
-    WHERE user_id = ?
-    GROUP BY date
-    ORDER BY date DESC
-  `).all(userId);
-  
-  // Calculate current streak
-  let currentStreak = 0;
-  let longestStreak = 0;
-  let tempStreak = 0;
-  
-  const today = new Date().toISOString().split('T')[0];
-  let checkDate = new Date();
-  
-  for (const day of allDailyStats) {
-    const dayDate = checkDate.toISOString().split('T')[0];
-    
-    // Get goal for this day
-    const dayGoalMinutes = getMonthlyGoal(checkDate.getFullYear(), checkDate.getMonth());
-    const dayGoalSeconds = dayGoalMinutes * 60;
-    
-    if (day.date === dayDate && day.total_seconds >= dayGoalSeconds) {
-      if (currentStreak === tempStreak) {
-        currentStreak++;
+export function getUserMonthlyCalendarData(userId, year, month) {
+  const habits = getHabitsByUser(userId);
+  if (habits.length === 0) return [];
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startStr = firstDay.toISOString().split('T')[0];
+  const endStr = lastDay.toISOString().split('T')[0];
+
+  // Get all logs for the month for this user
+  const logs = db.prepare(`
+    SELECT al.date, al.habit_id, SUM(al.duration_minutes) as total_minutes
+    FROM activity_logs al
+    WHERE al.user_id = ? AND al.date >= ? AND al.date <= ?
+    GROUP BY al.date, al.habit_id
+  `).all(userId, startStr, endStr);
+
+  const days = [];
+  for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split('T')[0];
+    const dayLogs = logs.filter(l => l.date === dateStr);
+
+    let habitsMetCount = 0;
+    let habitsTotal = habits.length;
+
+    for (const habit of habits) {
+      const log = dayLogs.find(l => l.habit_id === habit.id);
+      if (log && log.total_minutes >= habit.daily_min_minutes) {
+        habitsMetCount++;
       }
-      tempStreak++;
-      checkDate.setDate(checkDate.getDate() - 1);
-    } else if (day.date === dayDate) {
-      tempStreak = 0;
-      break;
     }
+
+    const totalMinutes = dayLogs.reduce((sum, l) => sum + l.total_minutes, 0);
+
+    days.push({
+      date: dateStr,
+      totalMinutes,
+      habitsMetCount,
+      habitsTotal,
+      allMet: habitsMetCount === habitsTotal && habitsTotal > 0,
+      anyMet: habitsMetCount > 0,
+      hasActivity: totalMinutes > 0
+    });
   }
-  
-  // Calculate longest streak
-  let streak = 0;
-  const dateMap = new Map(allDailyStats.map(d => [d.date, d]));
-  
-  // Go through all dates
-  const sortedDates = allDailyStats.map(d => d.date).sort();
-  for (let i = 0; i < sortedDates.length; i++) {
-    const date = sortedDates[i];
-    const data = dateMap.get(date);
-    
-    // Get goal for this specific date
-    const dateObj = new Date(date);
-    const dateGoalMinutes = getMonthlyGoal(dateObj.getFullYear(), dateObj.getMonth());
-    const dateGoalSeconds = dateGoalMinutes * 60;
-    
-    if (data && data.total_seconds >= dateGoalSeconds) {
-      streak++;
-      longestStreak = Math.max(longestStreak, streak);
-    } else {
-      streak = 0;
-    }
-  }
-  
-  const totalHours = Math.floor((totals.total_seconds || 0) / 3600);
-  const totalMinutes = Math.floor(((totals.total_seconds || 0) % 3600) / 60);
-  
-  return {
-    totalSessions: totals.total_sessions || 0,
-    totalSeconds: totals.total_seconds || 0,
-    totalHours,
-    totalMinutes,
-    daysActive: totals.days_active || 0,
-    currentStreak,
-    longestStreak,
-    dailyGoalMinutes: currentMonthGoal // Return current month's goal
-  };
-}
 
-// Monthly Settings functions
-export function getMonthlyGoal(year, month) {
-  const setting = db.prepare('SELECT daily_goal_minutes FROM monthly_settings WHERE year = ? AND month = ?').get(year, month);
-  return setting ? setting.daily_goal_minutes : 30; // Default 30 minutes
-}
-
-export function setMonthlyGoal(year, month, dailyGoalMinutes) {
-  db.prepare(`
-    INSERT INTO monthly_settings (year, month, daily_goal_minutes)
-    VALUES (?, ?, ?)
-    ON CONFLICT(year, month) 
-    DO UPDATE SET daily_goal_minutes = excluded.daily_goal_minutes
-  `).run(year, month, dailyGoalMinutes);
-  
-  return getMonthlyGoal(year, month);
-}
-
-export function getAllMonthlySettings() {
-  return db.prepare('SELECT * FROM monthly_settings ORDER BY year DESC, month DESC').all();
+  return days;
 }
 
 export default db;

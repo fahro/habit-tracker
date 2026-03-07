@@ -1,256 +1,175 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, Calendar, Clock, Award, AlertCircle, Target, BookOpen, Settings, Users } from 'lucide-react'
-import Dashboard from './components/Dashboard'
-import AddSession from './components/AddSession'
-import SettingsPanel from './components/SettingsPanel'
-import UserManagement from './components/UserManagement'
+import { Home, ListChecks, Calendar, BarChart2, Settings } from 'lucide-react'
+import TodayView from './components/TodayView'
+import HabitsView from './components/HabitsView'
+import CalendarView from './components/CalendarView'
+import StatsView from './components/StatsView'
+import SettingsView from './components/SettingsView'
+
+const TABS = [
+  { id: 'today', label: 'Today', Icon: Home },
+  { id: 'habits', label: 'Habits', Icon: ListChecks },
+  { id: 'calendar', label: 'Calendar', Icon: Calendar },
+  { id: 'stats', label: 'Stats', Icon: BarChart2 },
+  { id: 'settings', label: 'Settings', Icon: Settings },
+]
 
 function App() {
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const [stats, setStats] = useState(null)
-  const [dailyStats, setDailyStats] = useState(null)
+  const [activeTab, setActiveTab] = useState('today')
   const [users, setUsers] = useState([])
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/users')
-      const usersData = await res.json()
-      setUsers(usersData)
-      
-      if (usersData.length > 0 && !selectedUserId) {
-        // Try to restore from localStorage
-        const savedUserId = localStorage.getItem('selectedUserId')
-        const savedUserExists = savedUserId && usersData.find(u => u.id === parseInt(savedUserId))
-        
-        if (savedUserExists) {
-          setSelectedUserId(parseInt(savedUserId))
-        } else {
-          // Auto-select first user if no saved user
-          setSelectedUserId(usersData[0].id)
-          localStorage.setItem('selectedUserId', usersData[0].id.toString())
-        }
-      } else if (usersData.length === 0) {
-        // No users, stop loading
-        setLoading(false)
+      const data = await res.json()
+      setUsers(data)
+
+      if (data.length > 0) {
+        const saved = localStorage.getItem('selectedUserId')
+        const exists = saved && data.find(u => u.id === parseInt(saved))
+        const id = exists ? parseInt(saved) : data[0].id
+        setSelectedUserId(id)
+        localStorage.setItem('selectedUserId', id.toString())
       }
-    } catch (error) {
-      console.error('Error fetching users:', error)
+    } catch (err) {
+      console.error('Failed to fetch users:', err)
+    } finally {
       setLoading(false)
     }
   }
 
-  const fetchData = async () => {
-    if (!selectedUserId) {
-      setLoading(false)
-      return
-    }
-    
-    try {
-      const [overallRes, dailyRes] = await Promise.all([
-        fetch(`/api/stats/overall?userId=${selectedUserId}`),
-        fetch(`/api/stats/daily?days=30&userId=${selectedUserId}`)
-      ])
+  useEffect(() => { fetchUsers() }, [])
 
-      const overallData = await overallRes.json()
-      const dailyData = await dailyRes.json()
-
-      setStats(overallData)
-      setDailyStats(dailyData)
-      setLoading(false)
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      setLoading(false)
-    }
+  const handleUserChange = (id) => {
+    setSelectedUserId(id)
+    localStorage.setItem('selectedUserId', id.toString())
   }
 
-  useEffect(() => {
-    fetchUsers()
-    
-    // Failsafe: stop loading after 10 seconds
-    const timeout = setTimeout(() => {
-      setLoading(false)
-    }, 10000)
-    
-    return () => clearTimeout(timeout)
-  }, [])
-  
-  useEffect(() => {
-    if (selectedUserId) {
-      // Save to localStorage whenever user changes
-      localStorage.setItem('selectedUserId', selectedUserId.toString())
-      fetchData()
-    }
-  }, [selectedUserId])
+  const refresh = () => setRefreshKey(k => k + 1)
 
-  const handleSessionAdded = () => {
-    fetchUsers()
-    fetchData()
-  }
-
-  const handleSettingsUpdated = () => {
-    fetchData()
-  }
-  
-  const handleUsersUpdated = async () => {
-    await fetchUsers()
-    
-    // Check if currently selected user still exists
-    const res = await fetch('/api/users')
-    const usersData = await res.json()
-    
-    if (selectedUserId && !usersData.find(u => u.id === selectedUserId)) {
-      // Current user was deleted, select first available user
-      if (usersData.length > 0) {
-        setSelectedUserId(usersData[0].id)
-      } else {
-        setSelectedUserId(null)
-      }
-    }
-  }
-  
   const selectedUser = users.find(u => u.id === selectedUserId)
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-lg shadow-card">
-          <Clock className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-gray-700 font-medium">Učitavanje...</p>
+      <div className="flex items-center justify-center h-full bg-background">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">Loading...</p>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-soft">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <div className="flex items-center space-x-4">
-              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md">
-                <BookOpen className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Study Tracker</h1>
-                <p className="text-xs text-gray-500">Prati svoj napredak</p>
-              </div>
+  if (users.length === 0 && activeTab !== 'settings') {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center max-w-sm">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ListChecks className="w-10 h-10 text-primary" />
             </div>
-            
-            {/* User Selector */}
-            {users.length > 0 && (
-              <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl px-5 py-3 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-blue-500 rounded-lg">
-                    <Users className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700">Korisnik:</span>
-                </div>
-                <select
-                  value={selectedUserId || ''}
-                  onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                  className="bg-white border-2 border-blue-300 rounded-xl px-4 py-2 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all cursor-pointer shadow-sm"
-                >
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.display_name || user.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome!</h2>
+            <p className="text-slate-500 mb-6">Create your first user profile to start tracking habits.</p>
+            <button className="btn btn-primary w-full" onClick={() => setActiveTab('settings')}>
+              Get Started
+            </button>
           </div>
-          {/* Navigation */}
-          <div className="flex items-center gap-2 pb-4 pt-3 border-t border-gray-100 mt-3">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <TrendingUp className="w-4 h-4 inline mr-2" />
-                Dashboard
-              </button>
-              <button
-                onClick={() => setActiveTab('add')}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                  activeTab === 'add'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <Calendar className="w-4 h-4 inline mr-2" />
-                Dodaj Sesiju
-              </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                  activeTab === 'users'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <Users className="w-4 h-4 inline mr-2" />
-                Korisnici
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                  activeTab === 'settings'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <Settings className="w-4 h-4 inline mr-2" />
-                Postavke
-              </button>
+        </div>
+        <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-100 flex-shrink-0 px-4 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-2xl mx-auto flex items-center justify-between h-14">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
+              <ListChecks className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-slate-900 text-lg">Habits</span>
           </div>
+
+          {users.length > 1 && selectedUser && (
+            <select
+              value={selectedUserId || ''}
+              onChange={e => handleUserChange(parseInt(e.target.value))}
+              className="text-sm font-semibold text-slate-700 bg-slate-100 border-0 rounded-xl px-3 py-2 outline-none cursor-pointer"
+            >
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.display_name || u.name}</option>
+              ))}
+            </select>
+          )}
+
+          {users.length === 1 && selectedUser && (
+            <span className="text-sm font-semibold text-slate-500">
+              {selectedUser.display_name || selectedUser.name}
+            </span>
+          )}
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!selectedUserId && users.length === 0 && activeTab !== 'users' ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow-card p-8">
-            <p className="text-gray-700 mb-6 font-medium text-lg">Nema korisnika. Kreirajte prvog korisnika.</p>
-            <div className="flex justify-center space-x-3">
-              <button
-                onClick={() => setActiveTab('users')}
-                className="px-6 py-3 bg-primary text-white rounded-lg hover:shadow-card-hover font-medium transition-all"
-              >
-                Kreiraj Korisnika
-              </button>
-              <button
-                onClick={() => setActiveTab('add')}
-                className="px-6 py-3 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 font-medium transition-all"
-              >
-                Dodaj Sesiju
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'dashboard' && (
-              <Dashboard stats={stats} dailyStats={dailyStats} user={selectedUser} onDataRefresh={handleSessionAdded} />
-            )}
-            {activeTab === 'add' && (
-              <AddSession userId={selectedUserId} onSessionAdded={handleSessionAdded} users={users} />
-            )}
-            {activeTab === 'users' && (
-              <UserManagement users={users} onUsersUpdated={handleUsersUpdated} />
-            )}
-            {activeTab === 'settings' && (
-              <SettingsPanel user={selectedUser} userId={selectedUserId} onSettingsUpdated={handleSettingsUpdated} />
-            )}
-          </>
-        )}
-      </main>
+      {/* Content */}
+      <div className="content-area">
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          {activeTab === 'today' && (
+            <TodayView key={refreshKey} userId={selectedUserId} onRefresh={refresh} />
+          )}
+          {activeTab === 'habits' && (
+            <HabitsView key={refreshKey} userId={selectedUserId} onRefresh={refresh} />
+          )}
+          {activeTab === 'calendar' && (
+            <CalendarView key={refreshKey} userId={selectedUserId} />
+          )}
+          {activeTab === 'stats' && (
+            <StatsView key={refreshKey} userId={selectedUserId} />
+          )}
+          {activeTab === 'settings' && (
+            <SettingsView
+              users={users}
+              selectedUserId={selectedUserId}
+              onUsersUpdated={fetchUsers}
+              onUserChange={handleUserChange}
+            />
+          )}
+        </div>
+      </div>
+
+      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </div>
+  )
+}
+
+function BottomNav({ activeTab, onChange }) {
+  return (
+    <nav className="bottom-nav">
+      <div className="flex w-full max-w-2xl mx-auto px-2">
+        {TABS.map(({ id, label, Icon }) => {
+          const active = activeTab === id
+          return (
+            <button
+              key={id}
+              onClick={() => onChange(id)}
+              className={`nav-item ${active ? 'active' : ''}`}
+            >
+              <Icon
+                className={`nav-icon w-6 h-6 ${active ? 'text-primary' : 'text-slate-400'}`}
+                strokeWidth={active ? 2.5 : 1.8}
+              />
+              <span className={`text-[11px] font-semibold leading-tight ${active ? 'text-primary' : 'text-slate-400'}`}>
+                {label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </nav>
   )
 }
 

@@ -1,574 +1,222 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { initDatabase, addSession, getSessions, getDailyStats, getOverallStats, getUser, updateUser, getAllUsers, getUserById, createUser, getUserByName, updateUserSettings, updateUserDisplayName, deleteUser, getMonthlyGoal, setMonthlyGoal, getAllMonthlySettings, updateUserCreatedAt, getSessionById, updateSession, deleteSession } from './database.js';
+import {
+  initDatabase,
+  getAllUsers, getUserById, getUserByName, createUser, updateUserDisplayName, deleteUser,
+  getHabitsByUser, getHabitById, createHabit, updateHabit, deleteHabit,
+  addActivityLog, getActivityLogById, getActivityLogsByHabitAndDate,
+  getActivityLogsByUserAndDate, updateActivityLog, deleteActivityLog,
+  getUserTodayStats, getHabitDetailedStats, getHabitDailyStats, getUserMonthlyCalendarData
+} from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Basic Authentication Middleware
 const AUTH_USERNAME = process.env.AUTH_USERNAME || 'atomic';
 const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'habits2024';
 
 function basicAuth(req, res, next) {
   const authHeader = req.headers.authorization;
-  
   if (!authHeader || !authHeader.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Atomic Habits Tracker"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Habit Tracker"');
     return res.status(401).send('Authentication required');
   }
-  
-  const base64Credentials = authHeader.split(' ')[1];
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-  const [username, password] = credentials.split(':');
-  
-  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
-    return next();
-  }
-  
-  res.setHeader('WWW-Authenticate', 'Basic realm="Atomic Habits Tracker"');
+  const [username, password] = Buffer.from(authHeader.split(' ')[1], 'base64')
+    .toString('ascii').split(':');
+  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) return next();
+  res.setHeader('WWW-Authenticate', 'Basic realm="Habit Tracker"');
   return res.status(401).send('Invalid credentials');
 }
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(bodyParser.text());
 
-// Apply basic auth to all routes except health check
 app.use((req, res, next) => {
-  if (req.path === '/api/health') {
-    return next();
-  }
+  if (req.path === '/api/health') return next();
   basicAuth(req, res, next);
 });
 
-// Initialize database
 initDatabase();
 
-// Parse time duration like "18m 32s" or "1h 5m" to seconds
-function parseTimeToSeconds(timeStr) {
-  const hours = timeStr.match(/(\d+)h/);
-  const minutes = timeStr.match(/(\d+)m/);
-  const seconds = timeStr.match(/(\d+)s/);
-  
-  let totalSeconds = 0;
-  if (hours) totalSeconds += parseInt(hours[1]) * 3600;
-  if (minutes) totalSeconds += parseInt(minutes[1]) * 60;
-  if (seconds) totalSeconds += parseInt(seconds[1]);
-  
-  return totalSeconds;
-}
+// ---- Users ----
 
-// Extract username from message (Viber/WhatsApp format)
-function extractUsername(message) {
-  const lines = message.trim().split('\n');
-  if (lines.length === 0) return null;
-  
-  const firstLine = lines[0].trim();
-  
-  // Check for "Name:" format
-  const colonMatch = firstLine.match(/^([^:]+):\s*$/);
-  if (colonMatch) {
-    return colonMatch[1].trim();
-  }
-  
-  // Check for "@Name" format
-  const atMatch = firstLine.match(/^@([\w\s]+)/);
-  if (atMatch) {
-    return atMatch[1].trim();
-  }
-  
-  return null;
-}
-
-// Parse message format with optional username
-function parseMessage(message) {
-  const lines = message.trim().split('\n');
-  const sessions = [];
-  let username = null;
-  let startIndex = 0;
-  
-  // Check if first line is a username
-  if (lines.length > 0) {
-    username = extractUsername(lines.join('\n'));
-    if (username) {
-      startIndex = 1; // Skip first line
-    }
-  }
-  
-  // Check if it's inline format (single line or no clear line separation)
-  if (lines.length <= 2) {
-    const contentLine = lines.slice(startIndex).join(' ').trim();
-    
-    // Try to parse inline format: "Lesson 1 30m Lesson 2 45m"
-    // Regex to match duration patterns: 1h 30m 45s, 30m, 1h, etc.
-    const durationPattern = /(\d+h\s*\d+m\s*\d+s|\d+h\s*\d+m|\d+m\s*\d+s|\d+h|\d+m|\d+s)/gi;
-    
-    const matches = [];
-    let match;
-    while ((match = durationPattern.exec(contentLine)) !== null) {
-      matches.push({
-        duration: match[0],
-        index: match.index
-      });
-    }
-    
-    if (matches.length > 0) {
-      // Parse sessions based on duration positions
-      for (let i = 0; i < matches.length; i++) {
-        const currentMatch = matches[i];
-        const nextMatch = matches[i + 1];
-        
-        // Lesson name is before the duration
-        const lessonStart = i === 0 ? 0 : matches[i - 1].index + matches[i - 1].duration.length;
-        const lessonEnd = currentMatch.index;
-        const lessonName = contentLine.substring(lessonStart, lessonEnd).trim();
-        
-        const durationSeconds = parseTimeToSeconds(currentMatch.duration);
-        
-        if (lessonName && durationSeconds > 0) {
-          sessions.push({
-            lessonName,
-            duration: durationSeconds
-          });
-        }
-      }
-      
-      return { username, sessions };
-    }
-  }
-  
-  // Original format: line-by-line (lesson + duration pairs)
-  for (let i = startIndex; i < lines.length; i += 2) {
-    if (i + 1 < lines.length) {
-      const lessonName = lines[i].trim();
-      const duration = lines[i + 1].trim();
-      const durationSeconds = parseTimeToSeconds(duration);
-      
-      if (lessonName && durationSeconds > 0) {
-        sessions.push({
-          lessonName,
-          duration: durationSeconds
-        });
-      }
-    }
-  }
-  
-  return { username, sessions };
-}
-
-// API Routes
-
-// Get all users
-app.get('/api/users', (req, res) => {
-  const users = getAllUsers();
-  res.json(users);
+app.get('/api/users', (_req, res) => {
+  res.json(getAllUsers());
 });
 
-// Get specific user
-app.get('/api/users/:userId', (req, res) => {
-  const user = getUserById(parseInt(req.params.userId));
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
+app.get('/api/users/:id', (req, res) => {
+  const user = getUserById(parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'User not found' });
   res.json(user);
 });
 
-// Create new user
 app.post('/api/users', (req, res) => {
-  const { name, displayName, dailyGoalMinutes } = req.body;
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
-  
-  // Check if user already exists
-  const existingUser = getUserByName(name);
-  if (existingUser) {
-    return res.status(400).json({ error: 'Korisnik sa ovim imenom već postoji' });
-  }
-  
-  const userId = createUser(name, displayName, dailyGoalMinutes);
-  const user = getUserById(userId);
-  res.json(user);
+  const { name, displayName } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  if (getUserByName(name)) return res.status(400).json({ error: 'A user with that name already exists' });
+  const id = createUser(name, displayName);
+  res.json(getUserById(id));
 });
 
-// Update user settings
-app.put('/api/users/:userId', (req, res) => {
-  const userId = parseInt(req.params.userId);
+app.put('/api/users/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const user = getUserById(id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
   const { displayName } = req.body;
-  
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  
-  if (displayName !== undefined) {
-    updateUserDisplayName(userId, displayName);
-  }
-  
+  if (displayName !== undefined) updateUserDisplayName(id, displayName);
   res.json({ success: true });
 });
 
-// Delete user
-app.delete('/api/users/:userId', (req, res) => {
-  const userId = parseInt(req.params.userId);
-  const { password } = req.body;
-  
-  // Verify password
-  const ADMIN_PASSWORD = 'nikadporazsamolekcija';
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(403).json({ error: 'Pogrešna šifra' });
-  }
-  
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'Korisnik nije pronađen' });
-  }
-  
-  // Check if there are other users
-  const allUsers = getAllUsers();
-  if (allUsers.length === 1) {
-    return res.status(400).json({ error: 'Ne možete obrisati jedinog korisnika' });
-  }
-  
-  deleteUser(userId);
-  res.json({ success: true, message: 'Korisnik uspješno obrisan' });
-});
-
-// Update user created_at date (for backdating user creation)
-app.patch('/api/users/:userId/created-at', (req, res) => {
-  const userId = parseInt(req.params.userId);
-  const { createdAt } = req.body;
-  
-  if (!createdAt) {
-    return res.status(400).json({ error: 'createdAt is required' });
-  }
-  
-  const user = getUserById(userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  
-  updateUserCreatedAt(userId, createdAt);
-  res.json({ success: true, message: 'User created_at updated successfully' });
-});
-
-// Legacy endpoints for backward compatibility
-app.get('/api/user', (req, res) => {
+app.delete('/api/users/:id', (req, res) => {
+  const id = parseInt(req.params.id);
   const users = getAllUsers();
-  if (users.length === 0) {
-    return res.json({ id: null, name: 'No users', daily_goal_minutes: 30 });
-  }
-  res.json(users[0]); // Return first user
-});
-
-app.put('/api/user', (req, res) => {
-  const { dailyGoalMinutes, userId } = req.body;
-  const targetUserId = userId || 1;
-  updateUserSettings(targetUserId, dailyGoalMinutes);
+  if (users.length === 1) return res.status(400).json({ error: 'Cannot delete the only user' });
+  if (!getUserById(id)) return res.status(404).json({ error: 'User not found' });
+  deleteUser(id);
   res.json({ success: true });
 });
 
-// Add session(s) - can accept JSON or text message
-app.post('/api/sessions', (req, res) => {
-  try {
-    let sessions = [];
-    let userId = req.body.userId || undefined;
-    let username = req.body.username || undefined;
-    const date = req.body.date || new Date().toISOString().split('T')[0];
-    
-    // Check if it's a text message (from Viber/WhatsApp)
-    if (typeof req.body === 'string') {
-      const parsed = parseMessage(req.body);
-      sessions = parsed.sessions;
-      username = parsed.username || username;
-    } else if (Array.isArray(req.body)) {
-      sessions = req.body;
-    } else if (req.body.lessonName && req.body.duration) {
-      sessions = [req.body];
-    } else if (req.body.message) {
-      const parsed = parseMessage(req.body.message);
-      sessions = parsed.sessions;
-      username = parsed.username || username;
-    }
-    
-    // Get or create user based on username
-    if (username && !userId) {
-      let user = getUserByName(username);
-      if (!user) {
-        userId = createUser(username);
-      } else {
-        userId = user.id;
-      }
-    }
-    
-    // If still no userId, use first user or create default
-    if (!userId) {
-      const users = getAllUsers();
-      if (users.length > 0) {
-        userId = users[0].id;
-      } else {
-        userId = createUser('Default User');
-      }
-    }
-    
-    // Validate that we have sessions to add
-    if (!sessions || sessions.length === 0) {
-      return res.status(400).json({ 
-        error: 'Nisu pronađene sesije u poruci. Provjerite format (npr: "Lekcija 1\\n30m")' 
-      });
-    }
-    
-    const addedSessions = [];
-    for (const session of sessions) {
-      const id = addSession(userId, session.lessonName, session.duration, date);
-      addedSessions.push({ id, ...session });
-    }
-    
-    const user = getUserById(userId);
-    
-    res.json({ 
-      success: true, 
-      sessions: addedSessions,
-      count: addedSessions.length,
-      user: user ? user.name : 'Unknown'
-    });
-  } catch (error) {
-    console.error('Error adding sessions:', error);
-    res.status(500).json({ 
-      error: 'Greška pri obradi podataka. Provjerite format poruke.' 
-    });
-  }
+// ---- Habits ----
+
+app.get('/api/habits', (req, res) => {
+  const userId = parseInt(req.query.userId);
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+  const includeInactive = req.query.includeInactive === 'true';
+  res.json(getHabitsByUser(userId, includeInactive));
 });
 
-// Get all sessions for a user
-app.get('/api/sessions', (req, res) => {
-  const { startDate, endDate, userId } = req.query;
-  const targetUserId = userId ? parseInt(userId) : (getAllUsers()[0]?.id || null);
-  
-  if (!targetUserId) {
-    return res.json([]);
-  }
-  
-  const sessions = getSessions(targetUserId, startDate, endDate);
-  res.json(sessions);
+app.get('/api/habits/:id', (req, res) => {
+  const habit = getHabitById(parseInt(req.params.id));
+  if (!habit) return res.status(404).json({ error: 'Habit not found' });
+  res.json(habit);
 });
 
-// Update a session (only for today and yesterday)
-app.put('/api/sessions/:sessionId', (req, res) => {
-  const sessionId = parseInt(req.params.sessionId);
-  const { lessonName, duration, date } = req.body;
-  
-  // Get existing session
-  const session = getSessionById(sessionId);
-  if (!session) {
-    return res.status(404).json({ error: 'Sesija nije pronađena' });
-  }
-  
-  // Check if session is from today or yesterday
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  
-  const sessionDate = date || session.date;
-  if (sessionDate !== today && sessionDate !== yesterday) {
-    return res.status(403).json({ 
-      error: 'Možete editovati samo sesije za današnji i jučerašnji dan' 
-    });
-  }
-  
-  // Update session
-  updateSession(
-    sessionId, 
-    lessonName || session.lesson_name, 
-    duration !== undefined ? duration : session.duration_seconds,
-    sessionDate
+app.post('/api/habits', (req, res) => {
+  const { userId, name, color, dailyMinMinutes } = req.body;
+  if (!userId || !name) return res.status(400).json({ error: 'userId and name are required' });
+  const id = createHabit(userId, name, color, dailyMinMinutes);
+  res.json(getHabitById(id));
+});
+
+app.put('/api/habits/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const habit = getHabitById(id);
+  if (!habit) return res.status(404).json({ error: 'Habit not found' });
+  const { name, color, dailyMinMinutes, isActive } = req.body;
+  updateHabit(
+    id,
+    name !== undefined ? name : habit.name,
+    color !== undefined ? color : habit.color,
+    dailyMinMinutes !== undefined ? dailyMinMinutes : habit.daily_min_minutes,
+    isActive !== undefined ? isActive : habit.is_active === 1
   );
-  
-  res.json({ success: true, message: 'Sesija uspješno ažurirana' });
+  res.json(getHabitById(id));
 });
 
-// Delete a session (only for today and yesterday)
-app.delete('/api/sessions/:sessionId', (req, res) => {
-  const sessionId = parseInt(req.params.sessionId);
-  
-  // Get existing session
-  const session = getSessionById(sessionId);
-  if (!session) {
-    return res.status(404).json({ error: 'Sesija nije pronađena' });
+app.delete('/api/habits/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!getHabitById(id)) return res.status(404).json({ error: 'Habit not found' });
+  deleteHabit(id);
+  res.json({ success: true });
+});
+
+// ---- Activity Logs ----
+
+app.get('/api/logs', (req, res) => {
+  const { habitId, userId, date } = req.query;
+  if (habitId && date) {
+    return res.json(getActivityLogsByHabitAndDate(parseInt(habitId), date));
   }
-  
-  // Check if session is from today or yesterday
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  
-  if (session.date !== today && session.date !== yesterday) {
-    return res.status(403).json({ 
-      error: 'Možete brisati samo sesije za današnji i jučerašnji dan' 
-    });
+  if (userId && date) {
+    return res.json(getActivityLogsByUserAndDate(parseInt(userId), date));
   }
-  
-  // Delete session
-  deleteSession(sessionId);
-  
-  res.json({ success: true, message: 'Sesija uspješno obrisana' });
+  res.status(400).json({ error: 'Provide habitId+date or userId+date' });
 });
 
-// Get daily statistics for a user
-app.get('/api/stats/daily', (req, res) => {
-  const { days, userId } = req.query;
-  const numDays = days ? parseInt(days) : 30;
-  const targetUserId = userId ? parseInt(userId) : (getAllUsers()[0]?.id || null);
-  
-  if (!targetUserId) {
-    return res.json({ stats: [], totalPenalties: 0 });
+app.post('/api/logs', (req, res) => {
+  const { habitId, userId, date, durationMinutes, notes } = req.body;
+  if (!habitId || !userId || !date || !durationMinutes) {
+    return res.status(400).json({ error: 'habitId, userId, date, durationMinutes are required' });
   }
-  
-  const stats = getDailyStats(targetUserId, numDays);
-  res.json(stats);
-});
-
-// Get overall statistics for a user
-app.get('/api/stats/overall', (req, res) => {
-  const { userId } = req.query;
-  const targetUserId = userId ? parseInt(userId) : (getAllUsers()[0]?.id || null);
-  
-  if (!targetUserId) {
-    return res.json({ totalSessions: 0, totalSeconds: 0, totalHours: 0, totalMinutes: 0, daysActive: 0, currentStreak: 0, longestStreak: 0, dailyGoalMinutes: 30 });
+  if (durationMinutes <= 0) {
+    return res.status(400).json({ error: 'durationMinutes must be greater than 0' });
   }
-  
-  const stats = getOverallStats(targetUserId);
-  res.json(stats);
+  const id = addActivityLog(parseInt(habitId), parseInt(userId), date, parseInt(durationMinutes), notes || null);
+  res.json(getActivityLogById(id));
 });
 
-// Webhook endpoint for Viber/WhatsApp
-app.post('/api/webhook/message', (req, res) => {
-  try {
-    const date = req.body.date || new Date().toISOString().split('T')[0];
-    let username;
-    let sessions;
-    
-    // Check if author is provided
-    if (req.body.author) {
-      username = req.body.author.trim();
-      
-      if (!username) {
-        return res.status(400).json({ 
-          error: 'Author ne može biti prazan' 
-        });
-      }
-      
-      // Content can be in 'content' or 'message' parameter
-      const content = req.body.content || req.body.message;
-      
-      if (!content) {
-        return res.status(400).json({ 
-          error: 'Content ili message parametar je obavezan' 
-        });
-      }
-      
-      // Parse content (without username prefix since we have author)
-      const parsed = parseMessage(content);
-      sessions = parsed.sessions;
-    }
-    // No author provided - try to parse username from message
-    else {
-      const message = req.body.message || req.body.text || req.body;
-      const messageText = typeof message === 'string' ? message : JSON.stringify(message);
-      
-      const parsed = parseMessage(messageText);
-      username = parsed.username;
-      sessions = parsed.sessions;
-    }
-    
-    // Get or create user
-    let userId;
-    if (username) {
-      let user = getUserByName(username);
-      if (!user) {
-        userId = createUser(username);
-      } else {
-        userId = user.id;
-      }
-    } else {
-      // Use first user or create default
-      const users = getAllUsers();
-      if (users.length > 0) {
-        userId = users[0].id;
-      } else {
-        userId = createUser('Default User');
-      }
-    }
-    
-    const addedSessions = [];
-    for (const session of sessions) {
-      const id = addSession(userId, session.lessonName, session.duration, date);
-      addedSessions.push({ id, ...session });
-    }
-    
-    const user = getUserById(userId);
-    
-    res.json({ 
-      success: true, 
-      message: `✅ ${user.display_name || user.name}: Zabilježeno ${addedSessions.length} lekcija!`,
-      sessions: addedSessions,
-      user: user.name,
-      count: addedSessions.length
-    });
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).json({ error: error.message });
+app.put('/api/logs/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const log = getActivityLogById(id);
+  if (!log) return res.status(404).json({ error: 'Log not found' });
+  const { durationMinutes, notes } = req.body;
+  if (durationMinutes !== undefined && durationMinutes <= 0) {
+    return res.status(400).json({ error: 'durationMinutes must be greater than 0' });
   }
+  updateActivityLog(
+    id,
+    durationMinutes !== undefined ? parseInt(durationMinutes) : log.duration_minutes,
+    notes !== undefined ? notes : log.notes
+  );
+  res.json(getActivityLogById(id));
 });
 
-// Monthly settings endpoints
-app.get('/api/settings/monthly/:year/:month', (req, res) => {
-  const year = parseInt(req.params.year);
-  const month = parseInt(req.params.month);
-  
-  const dailyGoalMinutes = getMonthlyGoal(year, month);
-  res.json({ year, month, dailyGoalMinutes });
+app.delete('/api/logs/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!getActivityLogById(id)) return res.status(404).json({ error: 'Log not found' });
+  deleteActivityLog(id);
+  res.json({ success: true });
 });
 
-app.post('/api/settings/monthly', (req, res) => {
-  const { year, month, dailyGoalMinutes } = req.body;
-  
-  if (!year || month === undefined || !dailyGoalMinutes) {
-    return res.status(400).json({ error: 'Year, month, and dailyGoalMinutes are required' });
+// ---- Stats ----
+
+app.get('/api/stats/today', (req, res) => {
+  const userId = parseInt(req.query.userId);
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+  res.json(getUserTodayStats(userId));
+});
+
+app.get('/api/stats/habit/:habitId', (req, res) => {
+  const habitId = parseInt(req.params.habitId);
+  const numDays = parseInt(req.query.days) || 30;
+  const dailyStats = getHabitDailyStats(habitId, numDays);
+  const detailedStats = getHabitDetailedStats(habitId);
+  res.json({ ...detailedStats, dailyStats });
+});
+
+app.get('/api/stats/calendar', (req, res) => {
+  const { userId, year, month } = req.query;
+  if (!userId || year === undefined || month === undefined) {
+    return res.status(400).json({ error: 'userId, year, and month are required' });
   }
-  
-  const goal = setMonthlyGoal(year, month, dailyGoalMinutes);
-  res.json({ year, month, dailyGoalMinutes: goal, message: 'Mjesečni cilj uspješno postavljen' });
+  const data = getUserMonthlyCalendarData(parseInt(userId), parseInt(year), parseInt(month));
+  res.json(data);
 });
 
-app.get('/api/settings/monthly', (req, res) => {
-  const settings = getAllMonthlySettings();
-  res.json(settings);
-});
+// ---- Health ----
 
-// Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve robots.txt to prevent search engine indexing
-app.get('/robots.txt', (req, res) => {
+app.get('/robots.txt', (_req, res) => {
   res.type('text/plain');
-  res.send('User-agent: *\nDisallow: /\n\n# Prevent all search engines from indexing this site\n# This application contains private information');
+  res.send('User-agent: *\nDisallow: /\n');
 });
 
-// Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   const path = await import('path');
   const { fileURLToPath } = await import('url');
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  
+
   app.use(express.static(path.join(__dirname, '../dist')));
-  app.get('*', (req, res) => {
+  app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
