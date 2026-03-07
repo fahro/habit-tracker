@@ -101,7 +101,7 @@ export default function HomePage({ users, selectedUserId, onUserChange }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full flex flex-col bg-background">
       {/* Sticky header */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 pt-3 pb-0">
@@ -163,7 +163,8 @@ export default function HomePage({ users, selectedUserId, onUserChange }) {
       </div>
 
       {/* Content */}
-      <div className="max-w-lg mx-auto px-4 py-5">
+      <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+      <div className="max-w-lg mx-auto px-4 py-5" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
 
         {/* ── TODAY ── */}
         {tab === 'today' && (
@@ -358,6 +359,7 @@ export default function HomePage({ users, selectedUserId, onUserChange }) {
         {tab === 'stats' && (
           <StatsView key={selectedUserId} userId={selectedUserId} />
         )}
+      </div>
       </div>
 
       {/* Toast */}

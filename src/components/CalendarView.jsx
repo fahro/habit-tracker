@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, MinusCircle, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, MinusCircle, Clock } from 'lucide-react'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -233,7 +233,7 @@ export default function CalendarView({ userId }) {
   )
 }
 
-function DayDetail({ date, logs, habits, calData }) {
+function DayDetail({ logs, habits, calData }) {
   if (!logs || logs.length === 0) {
     return (
       <div className="text-center py-6 text-slate-400">
@@ -275,7 +275,7 @@ function DayDetail({ date, logs, habits, calData }) {
                 {total}m logged
                 {habit && ` · goal ${habit.daily_min_minutes}m`}
               </div>
-              {hLogs.length > 1 && (
+              {(hLogs.length > 1 || hLogs[0]?.notes) && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {hLogs.map(l => (
                     <span key={l.id} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
