@@ -13,29 +13,8 @@ import {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const AUTH_USERNAME = process.env.AUTH_USERNAME || 'atomic';
-const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'habits2024';
-
-function basicAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Habit Tracker"');
-    return res.status(401).send('Authentication required');
-  }
-  const [username, password] = Buffer.from(authHeader.split(' ')[1], 'base64')
-    .toString('ascii').split(':');
-  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) return next();
-  res.setHeader('WWW-Authenticate', 'Basic realm="Habit Tracker"');
-  return res.status(401).send('Invalid credentials');
-}
-
 app.use(cors());
 app.use(bodyParser.json());
-
-app.use((req, res, next) => {
-  if (req.path === '/api/health') return next();
-  basicAuth(req, res, next);
-});
 
 initDatabase();
 
@@ -93,9 +72,9 @@ app.get('/api/habits/:id', (req, res) => {
 });
 
 app.post('/api/habits', (req, res) => {
-  const { userId, name, color, dailyMinMinutes } = req.body;
+  const { userId, name, color, dailyMinMinutes, penaltyDays } = req.body;
   if (!userId || !name) return res.status(400).json({ error: 'userId and name are required' });
-  const id = createHabit(userId, name, color, dailyMinMinutes);
+  const id = createHabit(userId, name, color, dailyMinMinutes, penaltyDays);
   res.json(getHabitById(id));
 });
 
@@ -103,13 +82,14 @@ app.put('/api/habits/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const habit = getHabitById(id);
   if (!habit) return res.status(404).json({ error: 'Habit not found' });
-  const { name, color, dailyMinMinutes, isActive } = req.body;
+  const { name, color, dailyMinMinutes, isActive, penaltyDays } = req.body;
   updateHabit(
     id,
     name !== undefined ? name : habit.name,
     color !== undefined ? color : habit.color,
     dailyMinMinutes !== undefined ? dailyMinMinutes : habit.daily_min_minutes,
-    isActive !== undefined ? isActive : habit.is_active === 1
+    isActive !== undefined ? isActive : habit.is_active === 1,
+    penaltyDays !== undefined ? penaltyDays : (habit.penalty_days || 2)
   );
   res.json(getHabitById(id));
 });

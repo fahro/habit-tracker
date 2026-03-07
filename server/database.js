@@ -75,6 +75,13 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id);
   `);
 
+  // Migration: add penalty_days if not present
+  try {
+    db.exec(`ALTER TABLE habits ADD COLUMN penalty_days INTEGER NOT NULL DEFAULT 2`);
+  } catch {
+    // Column already exists
+  }
+
   console.log('Database initialized');
 }
 
@@ -130,17 +137,17 @@ export function getHabitById(id) {
   return db.prepare('SELECT * FROM habits WHERE id = ?').get(id);
 }
 
-export function createHabit(userId, name, color, dailyMinMinutes) {
+export function createHabit(userId, name, color, dailyMinMinutes, penaltyDays = 2) {
   const result = db.prepare(
-    'INSERT INTO habits (user_id, name, color, daily_min_minutes) VALUES (?, ?, ?, ?)'
-  ).run(userId, name, color || '#6366f1', dailyMinMinutes || 30);
+    'INSERT INTO habits (user_id, name, color, daily_min_minutes, penalty_days) VALUES (?, ?, ?, ?, ?)'
+  ).run(userId, name, color || '#6366f1', dailyMinMinutes || 30, penaltyDays);
   return result.lastInsertRowid;
 }
 
-export function updateHabit(id, name, color, dailyMinMinutes, isActive) {
+export function updateHabit(id, name, color, dailyMinMinutes, isActive, penaltyDays = 2) {
   db.prepare(
-    'UPDATE habits SET name = ?, color = ?, daily_min_minutes = ?, is_active = ? WHERE id = ?'
-  ).run(name, color, dailyMinMinutes, isActive ? 1 : 0, id);
+    'UPDATE habits SET name = ?, color = ?, daily_min_minutes = ?, is_active = ?, penalty_days = ? WHERE id = ?'
+  ).run(name, color, dailyMinMinutes, isActive ? 1 : 0, penaltyDays, id);
 }
 
 export function deleteHabit(id) {
@@ -290,7 +297,7 @@ export function getHabitDetailedStats(habitId) {
       const mins = dateMap.get(ds) || 0;
       if (mins < habit.daily_min_minutes) {
         consec++;
-        if (consec >= 2) penalties++;
+        if (consec >= (habit.penalty_days || 2)) penalties++;
       } else {
         consec = 0;
       }
@@ -345,7 +352,8 @@ export function getHabitDailyStats(habitId, numDays = 30) {
     });
   }
 
-  // Mark penalty days (2+ consecutive misses)
+  // Mark penalty days (N+ consecutive misses, based on habit.penalty_days)
+  const penaltyThreshold = habit.penalty_days || 2;
   let consecutiveMisses = 0;
   let penalties = 0;
 
@@ -353,7 +361,7 @@ export function getHabitDailyStats(habitId, numDays = 30) {
     const day = stats[i];
     if (!day.metGoal) {
       consecutiveMisses++;
-      if (consecutiveMisses >= 2) {
+      if (consecutiveMisses >= penaltyThreshold) {
         penalties++;
         day.penalty = true;
       }

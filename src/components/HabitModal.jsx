@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X, Check } from 'lucide-react'
 
 const PRESET_COLORS = [
@@ -11,15 +11,24 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
   const [name, setName] = useState('')
   const [color, setColor] = useState('#6366f1')
   const [dailyMin, setDailyMin] = useState('30')
+  const [penaltyDays, setPenaltyDays] = useState('2')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const scrollRef = useRef(null)
+  const nameRef = useRef(null)
 
   useEffect(() => {
     if (habit) {
       setName(habit.name)
       setColor(habit.color || '#6366f1')
       setDailyMin(habit.daily_min_minutes?.toString() || '30')
+      setPenaltyDays((habit.penalty_days || 2).toString())
     }
+    // Scroll to top so name input is visible, then focus it
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: 0 })
+      nameRef.current?.focus()
+    }, 50)
   }, [habit])
 
   const handleBackdrop = (e) => {
@@ -30,6 +39,8 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
     if (!name.trim()) { setError('Habit name is required'); return }
     const mins = parseInt(dailyMin)
     if (!mins || mins <= 0) { setError('Daily minimum must be greater than 0'); return }
+    const pdays = parseInt(penaltyDays)
+    if (!pdays || pdays < 1) { setError('Penalty days must be at least 1'); return }
 
     setSaving(true)
     setError('')
@@ -37,8 +48,8 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
       const url = habit ? `/api/habits/${habit.id}` : '/api/habits'
       const method = habit ? 'PUT' : 'POST'
       const body = habit
-        ? { name: name.trim(), color, dailyMinMinutes: mins }
-        : { userId, name: name.trim(), color, dailyMinMinutes: mins }
+        ? { name: name.trim(), color, dailyMinMinutes: mins, penaltyDays: pdays }
+        : { userId, name: name.trim(), color, dailyMinMinutes: mins, penaltyDays: pdays }
 
       const res = await fetch(url, {
         method,
@@ -67,7 +78,7 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
         <div className="modal-handle" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4">
+        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0">
           <h3 className="font-bold text-slate-900 text-lg">
             {habit ? 'Edit Habit' : 'New Habit'}
           </h3>
@@ -76,19 +87,19 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
           </button>
         </div>
 
-        <div className="modal-scroll px-5 pb-8 space-y-6">
-          {/* Name */}
+        <div ref={scrollRef} className="modal-scroll px-5 pb-8 space-y-6">
+          {/* Name — FIRST so it's visible on open */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
               Habit Name
             </label>
             <input
+              ref={nameRef}
               type="text"
               className="input text-base"
               value={name}
               onChange={e => { setName(e.target.value); setError('') }}
               placeholder="e.g. Reading, Guitar, Exercise..."
-              autoFocus
             />
           </div>
 
@@ -120,7 +131,7 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
           {/* Daily minimum */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
-              Daily Minimum (minutes)
+              Daily Minimum
             </label>
             <div className="relative">
               <input
@@ -136,26 +147,47 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
                 min/day
               </div>
             </div>
-
             <div className="flex gap-2 flex-wrap mt-3">
               {quickMins.map(v => (
                 <button
                   key={v}
-                  onClick={() => { setDailyMin(v.toString()); setError('') }}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  onClick={() => setDailyMin(v.toString())}
+                  className="px-3.5 py-2 rounded-xl text-sm font-semibold transition-all"
+                  style={
                     dailyMin === v.toString()
-                      ? 'text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                  style={dailyMin === v.toString() ? { background: color } : {}}
+                      ? { background: color, color: 'white' }
+                      : { background: '#f1f5f9', color: '#475569' }
+                  }
                 >
                   {v}m
                 </button>
               ))}
             </div>
+          </div>
 
-            <p className="text-xs text-slate-400 mt-3">
-              Missing this minimum for 2+ consecutive days will count as a penalty.
+          {/* Penalty days */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
+              Penalty After How Many Missed Days in a Row
+            </label>
+            <div className="flex gap-2">
+              {[2, 3, 4, 5, 7].map(v => (
+                <button
+                  key={v}
+                  onClick={() => setPenaltyDays(v.toString())}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+                  style={
+                    penaltyDays === v.toString()
+                      ? { background: '#ef4444', color: 'white' }
+                      : { background: '#fef2f2', color: '#ef4444' }
+                  }
+                >
+                  {v}d
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              A penalty is recorded if you miss the daily minimum {penaltyDays || 2} days in a row.
             </p>
           </div>
 
@@ -169,7 +201,9 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
                 <div className="w-1.5" style={{ background: color }} />
                 <div className="p-4 flex-1">
                   <div className="font-semibold text-slate-900">{name || 'Habit Name'}</div>
-                  <div className="text-sm text-slate-500 mt-0.5">Min {dailyMin || 0} min/day</div>
+                  <div className="text-sm text-slate-500 mt-0.5">
+                    Min {dailyMin || 0} min/day · penalty after {penaltyDays || 2} missed days
+                  </div>
                   <div className="progress-bar mt-3">
                     <div className="progress-fill w-0" style={{ background: color }} />
                   </div>
