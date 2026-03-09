@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, CheckCircle2, MinusCircle, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Plus, Trash2 } from 'lucide-react'
+import LogModal from './LogModal'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -17,6 +18,7 @@ export default function CalendarView({ userId }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [dayDetail, setDayDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [logTarget, setLogTarget] = useState(null) // { habit, date }
 
   const fetchData = async () => {
     if (!userId) return
@@ -63,6 +65,17 @@ export default function CalendarView({ userId }) {
     }
   }
 
+  const handleLogSaved = () => {
+    setLogTarget(null)
+    fetchDayDetail(selectedDay)
+    fetchData()
+  }
+
+  const handleLogDeleted = () => {
+    fetchDayDetail(selectedDay)
+    fetchData()
+  }
+
   const prevMonth = () => {
     if (month === 0) { setYear(y => y - 1); setMonth(11) }
     else setMonth(m => m - 1)
@@ -80,7 +93,7 @@ export default function CalendarView({ userId }) {
 
   // Build calendar grid
   const firstDay = new Date(year, month, 1)
-  const startPad = firstDay.getDay() // 0=Sun
+  const startPad = firstDay.getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const dataMap = new Map((calData || []).map(d => [d.date, d]))
 
@@ -154,14 +167,13 @@ export default function CalendarView({ userId }) {
                   bgClass = 'bg-green-50'
                   dotColor = '#22c55e'
                 } else if (data.anyMet) {
+                  // Some habits met, some missed → amber
                   bgClass = 'bg-amber-50'
                   dotColor = '#f59e0b'
-                } else if (data.hasActivity) {
+                } else if (data.habitsTotal > 0) {
+                  // No habit met its goal (includes no activity) → red (missed)
                   bgClass = 'bg-red-50'
                   dotColor = '#ef4444'
-                } else {
-                  bgClass = 'bg-slate-50'
-                  dotColor = '#cbd5e1'
                 }
               }
 
@@ -194,7 +206,6 @@ export default function CalendarView({ userId }) {
           <LegendItem color="#22c55e" label="All done" />
           <LegendItem color="#f59e0b" label="Partial" />
           <LegendItem color="#ef4444" label="Missed" />
-          <LegendItem color="#cbd5e1" label="None" />
         </div>
       </div>
 
@@ -225,61 +236,99 @@ export default function CalendarView({ userId }) {
               logs={dayDetail || []}
               habits={habits}
               calData={dataMap.get(selectedDay)}
+              onLogHabit={(habit) => setLogTarget({ habit, date: selectedDay })}
+              onLogDeleted={handleLogDeleted}
             />
           )}
         </div>
+      )}
+
+      {logTarget && (
+        <LogModal
+          habit={logTarget.habit}
+          userId={userId}
+          date={logTarget.date}
+          onSave={handleLogSaved}
+          onClose={() => setLogTarget(null)}
+        />
       )}
     </div>
   )
 }
 
-function DayDetail({ logs, habits, calData }) {
-  if (!logs || logs.length === 0) {
-    return (
-      <div className="text-center py-6 text-slate-400">
-        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No activity logged</p>
-      </div>
-    )
-  }
-
-  // Group logs by habit
+function DayDetail({ logs, habits, calData, onLogHabit, onLogDeleted }) {
+  // Group logs by habit_id
   const byHabit = {}
   for (const log of logs) {
     if (!byHabit[log.habit_id]) {
-      byHabit[log.habit_id] = { logs: [], total: 0, habitName: log.habit_name, habitColor: log.habit_color }
+      byHabit[log.habit_id] = { logs: [], total: 0 }
     }
     byHabit[log.habit_id].logs.push(log)
     byHabit[log.habit_id].total += log.duration_minutes
   }
 
+  const deleteLog = async (id) => {
+    await fetch(`/api/logs/${id}`, { method: 'DELETE' })
+    onLogDeleted()
+  }
+
+  if (!habits || habits.length === 0) {
+    return (
+      <div className="text-center py-6 text-slate-400">
+        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No habits configured</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
-      {Object.values(byHabit).map(({ logs: hLogs, total, habitName, habitColor }) => {
-        const habit = habits.find(h => h.name === habitName)
-        const metGoal = habit && total >= habit.daily_min_minutes
+      {habits.map(habit => {
+        const habitData = byHabit[habit.id] || { logs: [], total: 0 }
+        const metGoal = habitData.total >= habit.daily_min_minutes
+        const hasActivity = habitData.total > 0
+
         return (
-          <div key={habitName} className="flex items-start gap-3">
-            <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ background: habitColor }} />
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-slate-800 text-sm">{habitName}</span>
-                {metGoal
-                  ? <CheckCircle2 className="w-4 h-4 text-success" />
-                  : habit
-                    ? <MinusCircle className="w-4 h-4 text-warning" />
-                    : null
-                }
+          <div key={habit.id} className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full mt-2.5 flex-shrink-0" style={{ background: habit.color }} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-medium text-slate-800 text-sm">{habit.name}</span>
+                  {metGoal
+                    ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                    : <XCircle className="w-4 h-4 text-danger flex-shrink-0" />
+                  }
+                </div>
+                <button
+                  onClick={() => onLogHabit(habit)}
+                  className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition-all active:scale-95"
+                  style={{ background: `${habit.color}18`, color: habit.color }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Log
+                </button>
               </div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {total}m logged
-                {habit && ` · goal ${habit.daily_min_minutes}m`}
+
+              <div className={`text-xs mt-0.5 font-medium ${metGoal ? 'text-slate-500' : hasActivity ? 'text-amber-600' : 'text-red-500'}`}>
+                {habitData.total}m logged · goal {habit.daily_min_minutes}m
               </div>
-              {(hLogs.length > 1 || hLogs[0]?.notes) && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {hLogs.map(l => (
-                    <span key={l.id} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+
+              {/* Individual log entries */}
+              {habitData.logs.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {habitData.logs.map(l => (
+                    <span
+                      key={l.id}
+                      className="group flex items-center gap-1 text-xs bg-slate-100 text-slate-600 pl-2 pr-1 py-0.5 rounded-full"
+                    >
                       {l.duration_minutes}m{l.notes ? ` · ${l.notes}` : ''}
+                      <button
+                        onClick={() => deleteLog(l.id)}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-danger transition-all ml-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </span>
                   ))}
                 </div>
