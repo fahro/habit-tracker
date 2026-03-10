@@ -324,6 +324,17 @@ body {
   height: 0;
 }
 
+/* Desktop enhancements */
+@media (min-width: 768px) {
+  .card {
+    border-radius: 20px;
+  }
+  .cal-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
 /* Section header */
 .section-header {
   font-size: 13px;
