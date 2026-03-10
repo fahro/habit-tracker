@@ -142,7 +142,7 @@ export default function CalendarView({ userId }) {
     <div className="fade-in md:flex md:gap-6 md:items-start">
 
       {/* Left column: header + calendar */}
-      <div className="md:flex-1 space-y-4">
+      <div className="md:flex-1 md:max-w-xl space-y-4">
         <div className="pt-1">
           <h1 className="text-2xl font-bold text-slate-900">Calendar</h1>
           <p className="text-slate-500 text-sm mt-0.5">Monthly habit overview</p>

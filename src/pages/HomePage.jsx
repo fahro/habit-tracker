@@ -217,7 +217,7 @@ export default function HomePage({ users, selectedUserId, onUserChange }) {
 
       {/* ── CONTENT ── */}
       <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
-        <div className="max-w-lg mx-auto md:max-w-none px-4 md:px-8 py-5 md:py-8"
+        <div className="max-w-lg mx-auto md:max-w-4xl px-4 md:px-8 py-5 md:py-8"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
 
           {/* ── TODAY ── */}
@@ -270,7 +270,7 @@ export default function HomePage({ users, selectedUserId, onUserChange }) {
                   <button onClick={goAdmin} className="btn btn-primary btn-sm">Go to Admin</button>
                 </div>
               ) : (
-                <div className="md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 space-y-3 md:space-y-0">
+                <div className="md:grid md:grid-cols-2 md:gap-4 space-y-3 md:space-y-0">
                   {habitStats.map(({ habit, today: todayData, streak }) => {
                     const done = todayData.metGoal
                     const partial = !done && todayData.totalMinutes > 0
