@@ -18,7 +18,7 @@ export default function CalendarView({ userId }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [dayDetail, setDayDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [logTarget, setLogTarget] = useState(null) // { habit, date }
+  const [logTarget, setLogTarget] = useState(null)
 
   const fetchData = async () => {
     if (!userId) return
@@ -91,7 +91,6 @@ export default function CalendarView({ userId }) {
   const isNextDisabled = year === now.getFullYear() && month >= now.getMonth()
   const today = now.toISOString().split('T')[0]
 
-  // Build calendar grid
   const firstDay = new Date(year, month, 1)
   const startPad = firstDay.getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -104,144 +103,160 @@ export default function CalendarView({ userId }) {
     cells.push({ d, dateStr, data: dataMap.get(dateStr) })
   }
 
-  // Monthly summary
   const activeDays = calData.filter(d => d.hasActivity).length
   const perfectDays = calData.filter(d => d.allMet && d.habitsTotal > 0).length
 
+  const dayDetailPanel = (
+    <>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-slate-900">
+          {selectedDay && new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric'
+          })}
+        </h3>
+        <button
+          onClick={() => { setSelectedDay(null); setDayDetail(null) }}
+          className="text-slate-400 hover:text-slate-600 text-sm font-medium"
+        >
+          Close
+        </button>
+      </div>
+      {loadingDetail ? (
+        <div className="space-y-2">
+          {[1, 2].map(i => <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />)}
+        </div>
+      ) : (
+        <DayDetail
+          date={selectedDay}
+          logs={dayDetail || []}
+          habits={habits}
+          calData={dataMap.get(selectedDay)}
+          onLogHabit={(habit) => setLogTarget({ habit, date: selectedDay })}
+          onLogDeleted={handleLogDeleted}
+        />
+      )}
+    </>
+  )
+
   return (
-    <div className="space-y-4 fade-in">
-      <div className="pt-1">
-        <h1 className="text-2xl font-bold text-slate-900">Calendar</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Monthly habit overview</p>
-      </div>
+    <div className="fade-in md:flex md:gap-6 md:items-start">
 
-      {/* Month navigation */}
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={prevMonth} className="btn btn-secondary btn-icon">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="text-center">
-            <div className="font-bold text-slate-900 text-lg">
-              {MONTH_NAMES[month]} {year}
-            </div>
-            {!loading && (
-              <div className="text-xs text-slate-500 mt-0.5">
-                {perfectDays} perfect · {activeDays} active days
+      {/* Left column: header + calendar */}
+      <div className="md:flex-1 space-y-4">
+        <div className="pt-1">
+          <h1 className="text-2xl font-bold text-slate-900">Calendar</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Monthly habit overview</p>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={prevMonth} className="btn btn-secondary btn-icon">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="text-center">
+              <div className="font-bold text-slate-900 text-lg">
+                {MONTH_NAMES[month]} {year}
               </div>
-            )}
-          </div>
-          <button onClick={nextMonth} disabled={isNextDisabled} className="btn btn-secondary btn-icon disabled:opacity-30">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Day labels */}
-        <div className="grid grid-cols-7 mb-1">
-          {DAY_LABELS.map(d => (
-            <div key={d} className="text-center text-xs font-semibold text-slate-400 py-1">{d}</div>
-          ))}
-        </div>
-
-        {/* Calendar grid */}
-        {loading ? (
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: 35 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((cell, i) => {
-              if (!cell) return <div key={`pad-${i}`} />
-              const { d, dateStr, data } = cell
-              const isToday = dateStr === today
-              const isFuture = dateStr > today
-              const isSelected = selectedDay === dateStr
-
-              let bgClass = 'bg-slate-50'
-              let dotColor = null
-
-              if (!isFuture && data) {
-                if (data.allMet && data.habitsTotal > 0) {
-                  bgClass = 'bg-green-50'
-                  dotColor = '#22c55e'
-                } else if (data.anyMet) {
-                  // Some habits met, some missed → amber
-                  bgClass = 'bg-amber-50'
-                  dotColor = '#f59e0b'
-                } else if (data.habitsTotal > 0) {
-                  // No habit met its goal (includes no activity) → red (missed)
-                  bgClass = 'bg-red-50'
-                  dotColor = '#ef4444'
-                }
-              }
-
-              return (
-                <button
-                  key={dateStr}
-                  onClick={() => !isFuture && handleDayClick(dateStr)}
-                  disabled={isFuture}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all
-                    ${isFuture ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer active:scale-90'}
-                    ${bgClass}
-                    ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}
-                    ${isToday ? 'ring-2 ring-primary' : ''}
-                  `}
-                >
-                  <span className={`text-sm leading-none font-semibold ${isToday ? 'text-primary' : 'text-slate-700'}`}>
-                    {d}
-                  </span>
-                  {dotColor && (
-                    <div className="cal-dot" style={{ background: dotColor }} />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-slate-100">
-          <LegendItem color="#22c55e" label="All done" />
-          <LegendItem color="#f59e0b" label="Partial" />
-          <LegendItem color="#ef4444" label="Missed" />
-        </div>
-      </div>
-
-      {/* Day detail */}
-      {selectedDay && (
-        <div className="card p-4 fade-in">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-slate-900">
-              {new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-US', {
-                weekday: 'long', month: 'long', day: 'numeric'
-              })}
-            </h3>
-            <button
-              onClick={() => { setSelectedDay(null); setDayDetail(null) }}
-              className="text-slate-400 hover:text-slate-600 text-sm font-medium"
-            >
-              Close
+              {!loading && (
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {perfectDays} perfect · {activeDays} active days
+                </div>
+              )}
+            </div>
+            <button onClick={nextMonth} disabled={isNextDisabled} className="btn btn-secondary btn-icon disabled:opacity-30">
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
-          {loadingDetail ? (
-            <div className="space-y-2">
-              {[1, 2].map(i => <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />)}
+          <div className="grid grid-cols-7 mb-1">
+            {DAY_LABELS.map(d => (
+              <div key={d} className="text-center text-xs font-semibold text-slate-400 py-1">{d}</div>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />
+              ))}
             </div>
           ) : (
-            <DayDetail
-              date={selectedDay}
-              logs={dayDetail || []}
-              habits={habits}
-              calData={dataMap.get(selectedDay)}
-              onLogHabit={(habit) => setLogTarget({ habit, date: selectedDay })}
-              onLogDeleted={handleLogDeleted}
-            />
+            <div className="grid grid-cols-7 gap-1">
+              {cells.map((cell, i) => {
+                if (!cell) return <div key={`pad-${i}`} />
+                const { d, dateStr, data } = cell
+                const isToday = dateStr === today
+                const isFuture = dateStr > today
+                const isSelected = selectedDay === dateStr
+
+                let bgClass = 'bg-slate-50'
+                let dotColor = null
+
+                if (!isFuture && data) {
+                  if (data.allMet && data.habitsTotal > 0) {
+                    bgClass = 'bg-green-50'
+                    dotColor = '#22c55e'
+                  } else if (data.anyMet) {
+                    bgClass = 'bg-amber-50'
+                    dotColor = '#f59e0b'
+                  } else if (data.habitsTotal > 0) {
+                    bgClass = 'bg-red-50'
+                    dotColor = '#ef4444'
+                  }
+                }
+
+                return (
+                  <button
+                    key={dateStr}
+                    onClick={() => !isFuture && handleDayClick(dateStr)}
+                    disabled={isFuture}
+                    className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all
+                      ${isFuture ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer active:scale-90'}
+                      ${bgClass}
+                      ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}
+                      ${isToday ? 'ring-2 ring-primary' : ''}
+                    `}
+                  >
+                    <span className={`text-sm leading-none font-semibold ${isToday ? 'text-primary' : 'text-slate-700'}`}>
+                      {d}
+                    </span>
+                    {dotColor && (
+                      <div className="cal-dot" style={{ background: dotColor }} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           )}
+
+          <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-slate-100">
+            <LegendItem color="#22c55e" label="All done" />
+            <LegendItem color="#f59e0b" label="Partial" />
+            <LegendItem color="#ef4444" label="Missed" />
+          </div>
         </div>
-      )}
+
+        {/* Day detail — mobile (below calendar) */}
+        {selectedDay && (
+          <div className="md:hidden card p-4 fade-in">
+            {dayDetailPanel}
+          </div>
+        )}
+      </div>
+
+      {/* Right column — desktop side panel */}
+      <div className="hidden md:block w-80 flex-shrink-0 mt-14">
+        {selectedDay ? (
+          <div className="card p-4 fade-in">
+            {dayDetailPanel}
+          </div>
+        ) : (
+          <div className="card p-6 text-center text-slate-400">
+            <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Click a day to see details</p>
+          </div>
+        )}
+      </div>
 
       {logTarget && (
         <LogModal
@@ -257,10 +272,8 @@ export default function CalendarView({ userId }) {
 }
 
 function DayDetail({ date, logs, habits, calData, onLogHabit, onLogDeleted }) {
-  // Only show habits that had started on this date
   const activeHabits = (habits || []).filter(h => !h.start_date || h.start_date <= date)
 
-  // Group logs by habit_id
   const byHabit = {}
   for (const log of logs) {
     if (!byHabit[log.habit_id]) {
@@ -317,7 +330,6 @@ function DayDetail({ date, logs, habits, calData, onLogHabit, onLogDeleted }) {
                 {habitData.total}m logged · goal {habit.daily_min_minutes}m
               </div>
 
-              {/* Individual log entries */}
               {habitData.logs.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {habitData.logs.map(l => (

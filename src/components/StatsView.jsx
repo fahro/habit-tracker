@@ -98,7 +98,7 @@ export default function StatsView({ userId }) {
 
       {/* Stat cards */}
       {selectedStats && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
             icon={<Flame className="w-5 h-5 text-orange-400" />}
             label="Current Streak"
@@ -139,7 +139,7 @@ export default function StatsView({ userId }) {
       {chartData.length > 0 && (
         <div className="card p-4">
           <h3 className="font-semibold text-slate-800 mb-4 text-sm">Daily Activity</h3>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
