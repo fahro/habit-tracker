@@ -8,10 +8,12 @@ const PRESET_COLORS = [
 ]
 
 export default function HabitModal({ userId, habit, onSave, onClose }) {
+  const todayStr = new Date().toISOString().split('T')[0]
   const [name, setName] = useState('')
   const [color, setColor] = useState('#6366f1')
   const [dailyMin, setDailyMin] = useState('30')
   const [penaltyDays, setPenaltyDays] = useState('2')
+  const [startDate, setStartDate] = useState(todayStr)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,6 +23,7 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
       setColor(habit.color || '#6366f1')
       setDailyMin(habit.daily_min_minutes?.toString() || '30')
       setPenaltyDays((habit.penalty_days || 2).toString())
+      setStartDate(habit.start_date || todayStr)
     }
   }, [habit])
 
@@ -41,8 +44,8 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
       const url = habit ? `/api/habits/${habit.id}` : '/api/habits'
       const method = habit ? 'PUT' : 'POST'
       const body = habit
-        ? { name: name.trim(), color, dailyMinMinutes: mins, penaltyDays: pdays }
-        : { userId, name: name.trim(), color, dailyMinMinutes: mins, penaltyDays: pdays }
+        ? { name: name.trim(), color, dailyMinMinutes: mins, penaltyDays: pdays, startDate }
+        : { userId, name: name.trim(), color, dailyMinMinutes: mins, penaltyDays: pdays, startDate }
 
       const res = await fetch(url, {
         method,
@@ -123,6 +126,23 @@ export default function HabitModal({ userId, habit, onSave, onClose }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Start date */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">
+              Start Date
+            </label>
+            <input
+              type="date"
+              className="input text-base"
+              value={startDate}
+              max={todayStr}
+              onChange={e => setStartDate(e.target.value)}
+            />
+            <p className="text-xs text-slate-400 mt-1.5">
+              Days before this date won't count as missed.
+            </p>
           </div>
 
           {/* Daily minimum */}

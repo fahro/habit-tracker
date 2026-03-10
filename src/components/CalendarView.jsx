@@ -256,7 +256,10 @@ export default function CalendarView({ userId }) {
   )
 }
 
-function DayDetail({ logs, habits, calData, onLogHabit, onLogDeleted }) {
+function DayDetail({ date, logs, habits, calData, onLogHabit, onLogDeleted }) {
+  // Only show habits that had started on this date
+  const activeHabits = (habits || []).filter(h => !h.start_date || h.start_date <= date)
+
   // Group logs by habit_id
   const byHabit = {}
   for (const log of logs) {
@@ -272,18 +275,18 @@ function DayDetail({ logs, habits, calData, onLogHabit, onLogDeleted }) {
     onLogDeleted()
   }
 
-  if (!habits || habits.length === 0) {
+  if (!activeHabits || activeHabits.length === 0) {
     return (
       <div className="text-center py-6 text-slate-400">
         <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No habits configured</p>
+        <p className="text-sm">No habits were active on this date</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-3">
-      {habits.map(habit => {
+      {activeHabits.map(habit => {
         const habitData = byHabit[habit.id] || { logs: [], total: 0 }
         const metGoal = habitData.total >= habit.daily_min_minutes
         const hasActivity = habitData.total > 0

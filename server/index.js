@@ -72,9 +72,9 @@ app.get('/api/habits/:id', (req, res) => {
 });
 
 app.post('/api/habits', (req, res) => {
-  const { userId, name, color, dailyMinMinutes, penaltyDays } = req.body;
+  const { userId, name, color, dailyMinMinutes, penaltyDays, startDate } = req.body;
   if (!userId || !name) return res.status(400).json({ error: 'userId and name are required' });
-  const id = createHabit(userId, name, color, dailyMinMinutes, penaltyDays);
+  const id = createHabit(userId, name, color, dailyMinMinutes, penaltyDays, startDate || null);
   res.json(getHabitById(id));
 });
 
@@ -82,14 +82,15 @@ app.put('/api/habits/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const habit = getHabitById(id);
   if (!habit) return res.status(404).json({ error: 'Habit not found' });
-  const { name, color, dailyMinMinutes, isActive, penaltyDays } = req.body;
+  const { name, color, dailyMinMinutes, isActive, penaltyDays, startDate } = req.body;
   updateHabit(
     id,
     name !== undefined ? name : habit.name,
     color !== undefined ? color : habit.color,
     dailyMinMinutes !== undefined ? dailyMinMinutes : habit.daily_min_minutes,
     isActive !== undefined ? isActive : habit.is_active === 1,
-    penaltyDays !== undefined ? penaltyDays : (habit.penalty_days || 2)
+    penaltyDays !== undefined ? penaltyDays : (habit.penalty_days || 2),
+    startDate !== undefined ? startDate : habit.start_date
   );
   res.json(getHabitById(id));
 });

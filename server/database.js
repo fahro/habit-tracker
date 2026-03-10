@@ -82,6 +82,13 @@ export function initDatabase() {
     // Column already exists
   }
 
+  // Migration: add start_date if not present
+  try {
+    db.exec(`ALTER TABLE habits ADD COLUMN start_date TEXT`);
+  } catch {
+    // Column already exists
+  }
+
   console.log('Database initialized');
 }
 
@@ -137,17 +144,17 @@ export function getHabitById(id) {
   return db.prepare('SELECT * FROM habits WHERE id = ?').get(id);
 }
 
-export function createHabit(userId, name, color, dailyMinMinutes, penaltyDays = 2) {
+export function createHabit(userId, name, color, dailyMinMinutes, penaltyDays = 2, startDate = null) {
   const result = db.prepare(
-    'INSERT INTO habits (user_id, name, color, daily_min_minutes, penalty_days) VALUES (?, ?, ?, ?, ?)'
-  ).run(userId, name, color || '#6366f1', dailyMinMinutes || 30, penaltyDays);
+    'INSERT INTO habits (user_id, name, color, daily_min_minutes, penalty_days, start_date) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(userId, name, color || '#6366f1', dailyMinMinutes || 30, penaltyDays, startDate);
   return result.lastInsertRowid;
 }
 
-export function updateHabit(id, name, color, dailyMinMinutes, isActive, penaltyDays = 2) {
+export function updateHabit(id, name, color, dailyMinMinutes, isActive, penaltyDays = 2, startDate = null) {
   db.prepare(
-    'UPDATE habits SET name = ?, color = ?, daily_min_minutes = ?, is_active = ?, penalty_days = ? WHERE id = ?'
-  ).run(name, color, dailyMinMinutes, isActive ? 1 : 0, penaltyDays, id);
+    'UPDATE habits SET name = ?, color = ?, daily_min_minutes = ?, is_active = ?, penalty_days = ?, start_date = ? WHERE id = ?'
+  ).run(name, color, dailyMinMinutes, isActive ? 1 : 0, penaltyDays, startDate, id);
 }
 
 export function deleteHabit(id) {
@@ -397,9 +404,12 @@ export function getUserMonthlyCalendarData(userId, year, month) {
     const dayLogs = logs.filter(l => l.date === dateStr);
 
     let habitsMetCount = 0;
-    let habitsTotal = habits.length;
+    let habitsTotal = 0;
 
     for (const habit of habits) {
+      // Skip habits that haven't started yet on this day
+      if (habit.start_date && habit.start_date > dateStr) continue;
+      habitsTotal++;
       const log = dayLogs.find(l => l.habit_id === habit.id);
       if (log && log.total_minutes >= habit.daily_min_minutes) {
         habitsMetCount++;
